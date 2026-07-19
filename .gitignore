@@ -1,0 +1,123 @@
+# =========================
+# Build folders
+# =========================
+[Bb]in/
+[Oo]bj/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+
+# =========================
+# Visual Studio
+# =========================
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Rider
+.idea/
+
+# VS Code
+.vscode/
+
+# =========================
+# NuGet
+# =========================
+packages/
+*.nupkg
+*.snupkg
+
+# Ignore packages folder except build files
+!packages/build/
+!packages/repositories.config
+
+# =========================
+# Logs
+# =========================
+*.log
+*.tlog
+
+# =========================
+# Test Results
+# =========================
+TestResults/
+*.trx
+
+# =========================
+# Publish Output
+# =========================
+publish/
+PublishProfiles/
+
+# =========================
+# ClickOnce
+# =========================
+app.publish/
+
+# =========================
+# Generated Files
+# =========================
+Generated Files/
+
+# =========================
+# ReSharper
+# =========================
+_ReSharper*/
+*.DotSettings.user
+
+# =========================
+# Profiling
+# =========================
+*.psess
+*.vsp
+*.vspx
+
+# =========================
+# BenchmarkDotNet
+# =========================
+BenchmarkDotNet.Artifacts/
+
+# =========================
+# Temporary Files
+# =========================
+*.tmp
+*.temp
+*.cache
+*.bak
+*.old
+
+# =========================
+# OS Files
+# =========================
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# =========================
+# Secrets
+# =========================
+appsettings.Development.json
+secrets.json
+
+# =========================
+# Local database
+# =========================
+*.mdf
+*.ldf
+*.db
+*.sqlite
+*.sqlite3
+
+# =========================
+# Publish profiles (optional)
+# Uncomment if you don't want to commit them
+# =========================
+# Properties/PublishProfiles/
+
+# =========================
+# Azure Functions / Local settings
+# =========================
+local.settings.json
