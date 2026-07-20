@@ -1,5 +1,6 @@
 using Microsoft.Win32;
 using System.Windows;
+using System.Linq;
 
 namespace Church_Presenter;
 
@@ -12,7 +13,14 @@ public partial class MainWindow : Window
     private MediaAsset? _selectedMedia;
     private System.Windows.Controls.ComboBox? _planningModeBox;
     private int _plannerId;
-    public MainWindow() { InitializeComponent(); _database.Initialize(); AddPlanningModeControl(); ServiceDatePicker.SelectedDate = DateTime.Today; LoadSettings(); LoadBooks(); LoadPlanner(); }
+    public MainWindow() { InitializeComponent(); _database.Initialize(); AddPlanningModeControl(); ServiceDatePicker.SelectedDate = DateTime.Today; LoadSettings(); LoadBooks(); LoadPlanner(); Closing += MainWindow_Closing; }
+    private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
+    {
+        foreach (var window in Application.Current.Windows.OfType<Window>().Where(window => window != this).ToArray())
+        {
+            try { window.Close(); } catch { }
+        }
+    }
     private void AddPlanningModeControl()
     {
         var panel = ComponentTypeLabel.Parent as System.Windows.Controls.StackPanel; if (panel is null) return;
@@ -37,13 +45,30 @@ public partial class MainWindow : Window
         if (choice != MessageBoxResult.Yes) return;
         var picker = new OpenFileDialog { Filter = "Bible CSV|*.csv", Title = "Import UTF-8 Bible CSV (Book,Testament,Chapter,Verse,Text)" }; if (picker.ShowDialog() == true) { _database.ImportBibleCsv(picker.FileName); LoadBooks(); MessageBox.Show("Bible import completed.", "Church Presenter"); }
     }
+    private void DeleteAllBible_Click(object sender, RoutedEventArgs e)
+    {
+        if (MessageBox.Show("Delete every imported Bible book and verse? This cannot be undone.", "Delete Bible data", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        _database.DeleteAllBibleData();
+        _selectedVerse = null;
+        BookBox.ItemsSource = null;
+        ChapterBox.ItemsSource = null;
+        VerseList.ItemsSource = null;
+    }
     private void LoadSettings()
     {
-        BackgroundColorBox.Text = _database.Get("BackgroundColor", "#101828");
-        FontColorBox.Text = _database.Get("FontColor", "#FFFFFF");
+        BackgroundColorBox.Text = _database.Get("BackgroundColor", "#FFFFFF");
+        FontColorBox.Text = _database.Get("FontColor", "#000000");
         FontSizeSlider.Value = double.Parse(_database.Get("FontSize", "48"));
         FontSizeLabel.Text = $"{FontSizeSlider.Value:0} px";
         FontSizeSlider.ValueChanged += (_, _) => FontSizeLabel.Text = $"{FontSizeSlider.Value:0} px";
+        HeadingFontColorBox.Text = _database.Get("HeadingFontColor", "#000000");
+        HeadingFontSizeBox.Text = _database.Get("HeadingFontSize", "48");
+        ParagraphFontColorBox.Text = _database.Get("ParagraphFontColor", "#000000");
+        ParagraphFontSizeBox.Text = _database.Get("ParagraphFontSize", "48");
+        BibleReadingFontColorBox.Text = _database.Get("BibleReadingFontColor", "#000000");
+        BibleReadingFontSizeBox.Text = _database.Get("BibleReadingFontSize", "48");
+        SongLyricsFontColorBox.Text = _database.Get("SongLyricsFontColor", "#000000");
+        SongLyricsFontSizeBox.Text = _database.Get("SongLyricsFontSize", "48");
 
         // Scroll speed
         var speed = int.Parse(_database.Get("ScrollSpeed", "2"));
@@ -57,10 +82,18 @@ public partial class MainWindow : Window
         _database.Set("BackgroundColor", BackgroundColorBox.Text);
         _database.Set("FontColor", FontColorBox.Text);
         _database.Set("FontSize", FontSizeSlider.Value.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        _database.Set("HeadingFontColor", HeadingFontColorBox.Text);
+        _database.Set("HeadingFontSize", HeadingFontSizeBox.Text);
+        _database.Set("ParagraphFontColor", ParagraphFontColorBox.Text);
+        _database.Set("ParagraphFontSize", ParagraphFontSizeBox.Text);
+        _database.Set("BibleReadingFontColor", BibleReadingFontColorBox.Text);
+        _database.Set("BibleReadingFontSize", BibleReadingFontSizeBox.Text);
+        _database.Set("SongLyricsFontColor", SongLyricsFontColorBox.Text);
+        _database.Set("SongLyricsFontSize", SongLyricsFontSizeBox.Text);
         _database.Set("ScrollSpeed", ((int)ScrollSpeedSlider.Value).ToString(System.Globalization.CultureInfo.InvariantCulture));
         MessageBox.Show("Display settings saved.", "Church Presenter");
     }
-    private void PresentVerse_Click(object sender, RoutedEventArgs e) { if (_selectedVerse is null) { MessageBox.Show("Choose a verse first.", "Church Presenter"); return; } Present(_selectedVerse.Reference, _selectedVerse.Text); }
+    private void PresentVerse_Click(object sender, RoutedEventArgs e) { if (_selectedVerse is null) { MessageBox.Show("Choose a verse first.", "Church Presenter"); return; } Present(_selectedVerse.Reference, _selectedVerse.Text, "Bible Reading"); }
     private void PlannerIdentity_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e) => LoadPlanner();
     private void LoadPlanner_Click(object sender, RoutedEventArgs e) => LoadPlanner();
     private void LoadPlanner()
@@ -131,6 +164,15 @@ public partial class MainWindow : Window
         if (string.IsNullOrWhiteSpace(SongTitleBox.Text) || string.IsNullOrWhiteSpace(SongLyricsBox.Text)) { MessageBox.Show("Enter both a song title and lyrics.", "Church Presenter"); return; }
         _database.SaveSong(SongTitleBox.Text.Trim(), SongLyricsBox.Text); LoadLibraries(); SongTitleBox.Clear(); SongLyricsBox.Clear();
     }
+    private void DeleteAllSongs_Click(object sender, RoutedEventArgs e)
+    {
+        if (MessageBox.Show("Delete every song in the song library? Existing planner items will be kept. This cannot be undone.", "Delete songs", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        _database.DeleteAllSongs();
+        _selectedSong = null;
+        SongTitleBox.Clear();
+        SongLyricsBox.Clear();
+        LoadLibraries();
+    }
     private void Song_Selected(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
         _selectedSong = SongList.SelectedItem as Song; if (_selectedSong is null) return; SongTitleBox.Text = _selectedSong.Title; SongLyricsBox.Text = _selectedSong.Lyrics;
@@ -145,17 +187,18 @@ public partial class MainWindow : Window
         _database.SaveMediaAsset(type, title, picker.FileName); LoadLibraries(); MediaTitleBox.Clear();
     }
     private void Media_Selected(object sender, System.Windows.Controls.SelectionChangedEventArgs e) { _selectedMedia = MediaList.SelectedItem as MediaAsset; if (_selectedMedia is not null) MediaTitleBox.Text = _selectedMedia.Title; }
-    private void Preview_Click(object sender, RoutedEventArgs e) => Present("Church Presenter", "Your presentation preview appears here.");
-    private void Present(string title, string content)
+    private void Preview_Click(object sender, RoutedEventArgs e) => Present("Church Presenter", "Your presentation preview appears here.", "Paragraph");
+    private void Present(string title, string content, string componentType)
     {
         try
         {
             var speed = int.Parse(_database.Get("ScrollSpeed", "2"));
-            new PresentationWindow(title, content, BackgroundColorBox.Text, FontColorBox.Text, FontSizeSlider.Value, false, speed).Show();
+            var (foreground, fontSize) = _database.GetPresentationStyle(componentType);
+            new PresentationWindow(title, content, BackgroundColorBox.Text, foreground, fontSize, false, speed).Show();
         }
         catch
         {
-            MessageBox.Show("Use valid hex colors, for example #101828 and #FFFFFF.", "Church Presenter");
+            MessageBox.Show("Use valid hex colors, for example #FFFFFF and #000000.", "Church Presenter");
         }
     }
 }

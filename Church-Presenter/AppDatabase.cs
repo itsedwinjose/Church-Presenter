@@ -47,9 +47,17 @@ public sealed class AppDatabase
         EnsureColumn(c, "PlannerComponents", "PresentationMode", "TEXT NOT NULL DEFAULT 'Static'");
         EnsureColumn(c, "PlannerComponents", "ScrollSpeed", "INTEGER NOT NULL DEFAULT 2");
 
-        SetIfMissing("BackgroundColor", "#101828");
-        SetIfMissing("FontColor", "#FFFFFF");
+        SetIfMissing("BackgroundColor", "#FFFFFF");
+        SetIfMissing("FontColor", "#000000");
         SetIfMissing("FontSize", "48");
+        SetIfMissing("HeadingFontColor", "#000000");
+        SetIfMissing("HeadingFontSize", "48");
+        SetIfMissing("ParagraphFontColor", "#000000");
+        SetIfMissing("ParagraphFontSize", "48");
+        SetIfMissing("BibleReadingFontColor", "#000000");
+        SetIfMissing("BibleReadingFontSize", "48");
+        SetIfMissing("SongLyricsFontColor", "#000000");
+        SetIfMissing("SongLyricsFontSize", "48");
         SetIfMissing("ScrollSpeed", "2");
     }
 
@@ -283,6 +291,21 @@ public sealed class AppDatabase
         tx.Commit();
     }
 
+    public void DeleteAllBibleData()
+    {
+        using var c = Open();
+        using var tx = c.BeginTransaction();
+        using var verses = c.CreateCommand();
+        verses.Transaction = tx;
+        verses.CommandText = "DELETE FROM BibleVerses";
+        verses.ExecuteNonQuery();
+        using var books = c.CreateCommand();
+        books.Transaction = tx;
+        books.CommandText = "DELETE FROM BibleBooks";
+        books.ExecuteNonQuery();
+        tx.Commit();
+    }
+
     public void SaveBibleVerse(string testament, string bookName, int chapter, int verse, string text)
     {
         using var c = Open();
@@ -309,6 +332,35 @@ public sealed class AppDatabase
         cmd.Parameters.AddWithValue("$k", key);
         cmd.Parameters.AddWithValue("$v", value);
         cmd.ExecuteNonQuery();
+    }
+
+    public void DeleteAllSongs()
+    {
+        using var c = Open();
+        using var cmd = c.CreateCommand();
+        cmd.CommandText = "DELETE FROM Songs";
+        cmd.ExecuteNonQuery();
+    }
+
+    public (string Foreground, double FontSize) GetPresentationStyle(string componentType)
+    {
+        var prefix = componentType switch
+        {
+            "Heading" => "Heading",
+            "Paragraph" => "Paragraph",
+            "Bible Reading" => "BibleReading",
+            "Song" => "SongLyrics",
+            _ => ""
+        };
+
+        var fallbackColor = Get("FontColor", "#000000");
+        var fallbackSize = Get("FontSize", "48");
+        var color = string.IsNullOrEmpty(prefix) ? fallbackColor : Get($"{prefix}FontColor", fallbackColor);
+        var sizeValue = string.IsNullOrEmpty(prefix) ? fallbackSize : Get($"{prefix}FontSize", fallbackSize);
+        var fontSize = double.TryParse(sizeValue, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var parsed)
+            ? parsed
+            : 48;
+        return (color, fontSize);
     }
 
     private void SetIfMissing(string key, string value)

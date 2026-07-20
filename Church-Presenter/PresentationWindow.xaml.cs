@@ -14,15 +14,13 @@ public partial class PresentationWindow : Window
     private readonly int _pauseTicks = 40; // ~2s pause at 50ms interval
     private bool _isScrollable;
 
-    public PresentationWindow(string title, string content, string background, string foreground, double fontSize, bool scrollable = false, int scrollSpeed = 2)
+    public PresentationWindow(string _, string content, string background, string foreground, double fontSize, bool scrollable = false, int scrollSpeed = 2)
     {
         InitializeComponent();
         Stage.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(background));
         var brush = new SolidColorBrush((Color)ColorConverter.ConvertFromString(foreground));
-        TitleText.Foreground = ContentText.Foreground = brush;
-        TitleText.Text = title;
+        ContentText.Foreground = brush;
         ContentText.Text = content;
-        TitleText.FontSize = fontSize * 1.15;
         ContentText.FontSize = fontSize;
         ContentScroller.VerticalScrollBarVisibility = scrollable ? ScrollBarVisibility.Auto : ScrollBarVisibility.Disabled;
         _scrollSpeed = scrollSpeed;
@@ -46,8 +44,8 @@ public partial class PresentationWindow : Window
                         return;
                     }
 
-                    var newOffset = ContentScroller.VerticalOffset - _scrollSpeed;
-                    if (newOffset <= 0)
+                    var newOffset = ContentScroller.VerticalOffset + _scrollSpeed;
+                    if (newOffset >= ContentScroller.ScrollableHeight)
                     {
                         ContentScroller.ScrollToVerticalOffset(0);
                         _pauseCounter = _pauseTicks;
@@ -60,13 +58,12 @@ public partial class PresentationWindow : Window
                 catch { }
             };
 
-            // ensure initial bottom position is set after layout, but do not start the timer yet
+            // Start at the top so the content scrolls upward through the display.
             ContentScroller.Loaded += (_, _) =>
             {
                 try
                 {
-                    if (ContentScroller.ScrollableHeight > 0)
-                        ContentScroller.ScrollToVerticalOffset(ContentScroller.ScrollableHeight);
+                    ContentScroller.ScrollToVerticalOffset(0);
                 }
                 catch { }
             };
@@ -87,8 +84,7 @@ public partial class PresentationWindow : Window
         if (!_isScrollable || _scrollTimer is null) return;
         try
         {
-            if (ContentScroller.ScrollableHeight > 0)
-                ContentScroller.ScrollToVerticalOffset(ContentScroller.ScrollableHeight);
+            ContentScroller.ScrollToVerticalOffset(0);
         }
         catch { }
         _pauseCounter = 0;
@@ -100,8 +96,4 @@ public partial class PresentationWindow : Window
         try { _scrollTimer?.Stop(); } catch { }
     }
 
-    private void Close_Click(object? sender, RoutedEventArgs e)
-    {
-        Close();
-    }
 }

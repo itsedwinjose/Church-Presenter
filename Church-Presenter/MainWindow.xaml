@@ -128,7 +128,10 @@
          <TextBlock Text="Bible Library" FontSize="31" FontWeight="SemiBold"/>
          <TextBlock Text="Tamil Unicode Bible, arranged by book, chapter and verse." Foreground="#64748B" Margin="0,6,0,16"/>
        </StackPanel>
-       <Button DockPanel.Dock="Right" Content="Import CSV Bible" Click="ImportBible_Click" Background="#0284C7" Foreground="White"/>
+       <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+        <Button Content="Delete all Bible data" Click="DeleteAllBible_Click" Foreground="#B91C1C"/>
+        <Button Content="Import CSV Bible" Click="ImportBible_Click" Background="#0284C7" Foreground="White"/>
+       </StackPanel>
      </DockPanel>
      <Border Grid.Row="1" Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="8" Padding="12">
        <Grid>
@@ -168,7 +171,8 @@
    </Grid>
 
    <Grid x:Name="SettingsPanel" Visibility="Collapsed">
-     <StackPanel Width="620">
+     <ScrollViewer VerticalScrollBarVisibility="Auto">
+      <StackPanel Width="620">
        <TextBlock Text="Display settings" FontSize="31" FontWeight="SemiBold"/>
        <TextBlock Text="These defaults are saved locally and used by the fullscreen presentation window." Foreground="#64748B" Margin="0,6,0,20"/>
        <Border Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="8" Padding="20">
@@ -195,7 +199,31 @@
            </WrapPanel>
          </StackPanel>
        </Border>
-     </StackPanel>
+       <Border Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="8" Padding="20" Margin="0,16,0,0">
+         <StackPanel>
+           <TextBlock Text="Content-specific typography" FontSize="18" FontWeight="SemiBold"/>
+           <TextBlock Text="Set a font size and hex color for each type of presentation content." Foreground="#64748B" Margin="0,4,0,12"/>
+           <Grid>
+             <Grid.ColumnDefinitions><ColumnDefinition Width="150"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+             <TextBlock Grid.Column="1" Text="Font size" Margin="4"/><TextBlock Grid.Column="2" Text="Font color (hex)" Margin="4"/>
+             <TextBlock Grid.Row="1" Text="Heading" VerticalAlignment="Center" Margin="4"/>
+             <TextBox x:Name="HeadingFontSizeBox" Grid.Row="1" Grid.Column="1" ToolTip="Font size"/>
+             <TextBox x:Name="HeadingFontColorBox" Grid.Row="1" Grid.Column="2" ToolTip="Hex color, e.g. #FFFFFF"/>
+             <TextBlock Grid.Row="2" Text="Paragraph" VerticalAlignment="Center" Margin="4"/>
+             <TextBox x:Name="ParagraphFontSizeBox" Grid.Row="2" Grid.Column="1" ToolTip="Font size"/>
+             <TextBox x:Name="ParagraphFontColorBox" Grid.Row="2" Grid.Column="2" ToolTip="Hex color, e.g. #FFFFFF"/>
+             <TextBlock Grid.Row="3" Text="Bible reading" VerticalAlignment="Center" Margin="4"/>
+             <TextBox x:Name="BibleReadingFontSizeBox" Grid.Row="3" Grid.Column="1" ToolTip="Font size"/>
+             <TextBox x:Name="BibleReadingFontColorBox" Grid.Row="3" Grid.Column="2" ToolTip="Hex color, e.g. #FFFFFF"/>
+             <TextBlock Grid.Row="4" Text="Song lyrics" VerticalAlignment="Center" Margin="4"/>
+             <TextBox x:Name="SongLyricsFontSizeBox" Grid.Row="4" Grid.Column="1" ToolTip="Font size"/>
+             <TextBox x:Name="SongLyricsFontColorBox" Grid.Row="4" Grid.Column="2" ToolTip="Hex color, e.g. #FFFFFF"/>
+           </Grid>
+         </StackPanel>
+       </Border>
+      </StackPanel>
+     </ScrollViewer>
    </Grid>
 
    <Grid x:Name="OtherPanel" Visibility="Collapsed">
@@ -224,7 +252,10 @@
            <TextBlock Text="SONG LIBRARY" FontWeight="Bold" Foreground="#64748B" FontSize="12"/>
            <TextBox x:Name="SongTitleBox" Grid.Row="1" ToolTip="Song title"/>
            <TextBox x:Name="SongLyricsBox" Grid.Row="2" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" ToolTip="Lyrics (separate stanzas with blank lines)"/>
-           <Button Grid.Row="3" Content="Save song" Click="SaveSong_Click" Background="#0284C7" Foreground="White" HorizontalAlignment="Left"/>
+           <StackPanel Grid.Row="3" Orientation="Horizontal">
+            <Button Content="Save song" Click="SaveSong_Click" Background="#0284C7" Foreground="White" HorizontalAlignment="Left"/>
+            <Button Content="Delete all songs" Click="DeleteAllSongs_Click" Foreground="#B91C1C"/>
+           </StackPanel>
            <ListBox x:Name="SongList" Grid.Row="4" DisplayMemberPath="DisplayTitle" SelectionChanged="Song_Selected"/>
          </Grid>
        </Border>
