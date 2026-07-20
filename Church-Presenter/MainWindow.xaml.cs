@@ -37,8 +37,29 @@ public partial class MainWindow : Window
         if (choice != MessageBoxResult.Yes) return;
         var picker = new OpenFileDialog { Filter = "Bible CSV|*.csv", Title = "Import UTF-8 Bible CSV (Book,Testament,Chapter,Verse,Text)" }; if (picker.ShowDialog() == true) { _database.ImportBibleCsv(picker.FileName); LoadBooks(); MessageBox.Show("Bible import completed.", "Church Presenter"); }
     }
-    private void LoadSettings() { BackgroundColorBox.Text = _database.Get("BackgroundColor", "#101828"); FontColorBox.Text = _database.Get("FontColor", "#FFFFFF"); FontSizeSlider.Value = double.Parse(_database.Get("FontSize", "48")); FontSizeLabel.Text = $"{FontSizeSlider.Value:0} px"; FontSizeSlider.ValueChanged += (_, _) => FontSizeLabel.Text = $"{FontSizeSlider.Value:0} px"; }
-    private void SaveSettings_Click(object sender, RoutedEventArgs e) { _database.Set("BackgroundColor", BackgroundColorBox.Text); _database.Set("FontColor", FontColorBox.Text); _database.Set("FontSize", FontSizeSlider.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)); MessageBox.Show("Display settings saved.", "Church Presenter"); }
+    private void LoadSettings()
+    {
+        BackgroundColorBox.Text = _database.Get("BackgroundColor", "#101828");
+        FontColorBox.Text = _database.Get("FontColor", "#FFFFFF");
+        FontSizeSlider.Value = double.Parse(_database.Get("FontSize", "48"));
+        FontSizeLabel.Text = $"{FontSizeSlider.Value:0} px";
+        FontSizeSlider.ValueChanged += (_, _) => FontSizeLabel.Text = $"{FontSizeSlider.Value:0} px";
+
+        // Scroll speed
+        var speed = int.Parse(_database.Get("ScrollSpeed", "2"));
+        ScrollSpeedSlider.Value = speed;
+        ScrollSpeedLabel.Text = $"{ScrollSpeedSlider.Value:0} px / tick";
+        ScrollSpeedSlider.ValueChanged += (_, _) => ScrollSpeedLabel.Text = $"{ScrollSpeedSlider.Value:0} px / tick";
+    }
+
+    private void SaveSettings_Click(object sender, RoutedEventArgs e)
+    {
+        _database.Set("BackgroundColor", BackgroundColorBox.Text);
+        _database.Set("FontColor", FontColorBox.Text);
+        _database.Set("FontSize", FontSizeSlider.Value.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        _database.Set("ScrollSpeed", ((int)ScrollSpeedSlider.Value).ToString(System.Globalization.CultureInfo.InvariantCulture));
+        MessageBox.Show("Display settings saved.", "Church Presenter");
+    }
     private void PresentVerse_Click(object sender, RoutedEventArgs e) { if (_selectedVerse is null) { MessageBox.Show("Choose a verse first.", "Church Presenter"); return; } Present(_selectedVerse.Reference, _selectedVerse.Text); }
     private void PlannerIdentity_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e) => LoadPlanner();
     private void LoadPlanner_Click(object sender, RoutedEventArgs e) => LoadPlanner();
@@ -125,5 +146,16 @@ public partial class MainWindow : Window
     }
     private void Media_Selected(object sender, System.Windows.Controls.SelectionChangedEventArgs e) { _selectedMedia = MediaList.SelectedItem as MediaAsset; if (_selectedMedia is not null) MediaTitleBox.Text = _selectedMedia.Title; }
     private void Preview_Click(object sender, RoutedEventArgs e) => Present("Church Presenter", "Your presentation preview appears here.");
-    private void Present(string title, string content) { try { new PresentationWindow(title, content, BackgroundColorBox.Text, FontColorBox.Text, FontSizeSlider.Value).Show(); } catch { MessageBox.Show("Use valid hex colors, for example #101828 and #FFFFFF.", "Church Presenter"); } }
+    private void Present(string title, string content)
+    {
+        try
+        {
+            var speed = int.Parse(_database.Get("ScrollSpeed", "2"));
+            new PresentationWindow(title, content, BackgroundColorBox.Text, FontColorBox.Text, FontSizeSlider.Value, false, speed).Show();
+        }
+        catch
+        {
+            MessageBox.Show("Use valid hex colors, for example #101828 and #FFFFFF.", "Church Presenter");
+        }
+    }
 }

@@ -16,11 +16,16 @@
         <TextBlock Text="Display mode:" Foreground="White" VerticalAlignment="Center" Margin="0,0,8,0"/>
         <ComboBox x:Name="DisplayModeBox" Width="150" SelectionChanged="DisplayMode_Changed"><ComboBoxItem Content="Static"/><ComboBoxItem Content="Scrollable"/></ComboBox>
         <TextBlock x:Name="ScreenStatus" Foreground="#CBD5E1" VerticalAlignment="Center" Margin="18,0,0,0"/>
+        <TextBlock Text="Speed:" Foreground="White" VerticalAlignment="Center" Margin="18,0,6,0"/>
+        <Button Content="-" Width="28" Height="28" Click="DecreaseSpeed_Click"/>
+        <TextBlock x:Name="ScrollSpeedDisplay" Foreground="#CBD5E1" VerticalAlignment="Center" Margin="6,0" Text="2" />
+        <Button Content="+" Width="28" Height="28" Click="IncreaseSpeed_Click"/>
       </StackPanel>
       <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
         <Button Content="Clear preview" Click="ClearPreview_Click" Margin="0,0,8,0"/>
         <Button Content="Stop presentation" Click="Stop_Click" Margin="0,0,8,0"/>
-        <Button Content="Play on presentation screen" Click="Play_Click" Background="#0284C7" Foreground="White" Padding="16,9"/>
+        <Button Content="Close console" Click="CloseConsole_Click" Margin="0,0,8,0"/>
+        <ToggleButton x:Name="PlayPauseToggle" Content="Play" Click="PlayPause_Click" Background="#0284C7" Foreground="White" Padding="16,9"/>
       </StackPanel>
     </DockPanel>
   </Grid>
