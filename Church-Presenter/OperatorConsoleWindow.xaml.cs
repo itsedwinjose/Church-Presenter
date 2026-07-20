@@ -31,6 +31,22 @@ public partial class OperatorConsoleWindow : Window
         _presentation?.Close(); var background=_database.Get("BackgroundColor", "#101828");var foreground=_database.Get("FontColor", "#FFFFFF");var size=double.Parse(_database.Get("FontSize","48"),System.Globalization.CultureInfo.InvariantCulture);
         _presentation=new PresentationWindow(Selected.Title,Selected.Content,background,foreground,size,Selected.PresentationMode=="Scrollable"); MoveToPresentationScreen(_presentation); _presentation.Show();
     }
+    private void Stop_Click(object sender, RoutedEventArgs e)
+    {
+        if (_presentation is null) return;
+        try { _presentation.Close(); } catch { }
+        _presentation = null;
+        PreviewTitle.Text = "Select a component";
+        PreviewContent.Text = string.Empty;
+        PreviewScroller.VerticalScrollBarVisibility = ScrollBarVisibility.Disabled;
+    }
+
+    private void ClearPreview_Click(object sender, RoutedEventArgs e)
+    {
+        PreviewTitle.Text = "Select a component";
+        PreviewContent.Text = string.Empty;
+        PreviewScroller.VerticalScrollBarVisibility = ScrollBarVisibility.Disabled;
+    }
     private static void MoveToPresentationScreen(Window window)
     {
         var screen=Forms.Screen.AllScreens.Length>1 ? Forms.Screen.AllScreens[1] : Forms.Screen.PrimaryScreen; if(screen is null)return; var bounds=screen.Bounds; window.WindowStartupLocation=WindowStartupLocation.Manual;window.Left=bounds.Left;window.Top=bounds.Top;window.Width=bounds.Width;window.Height=bounds.Height;window.WindowState=WindowState.Maximized;
