@@ -13,7 +13,7 @@ public partial class MainWindow : Window
     private MediaAsset? _selectedMedia;
     private System.Windows.Controls.ComboBox? _planningModeBox;
     private int _plannerId;
-    public MainWindow() { InitializeComponent(); _database.Initialize(); AddPlanningModeControl(); ServiceDatePicker.SelectedDate = DateTime.Today; LoadSettings(); LoadBooks(); LoadPlanner(); Closing += MainWindow_Closing; }
+    public MainWindow() { InitializeComponent(); _database.Initialize(); AddPlanningModeControl(); ServiceDatePicker.SelectedDate = DateTime.Today; LoadSettings(); LoadBooks(); LoadLibraries(); LoadPlanner(); Closing += MainWindow_Closing; }
     private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
         foreach (var window in Application.Current.Windows.OfType<Window>().Where(window => window != this).ToArray())
@@ -29,10 +29,11 @@ public partial class MainWindow : Window
         _planningModeBox.Items.Add("Static"); _planningModeBox.Items.Add("Scrollable"); _planningModeBox.SelectionChanged += (_, _) => { if (_selectedComponent is not null && _planningModeBox.SelectedItem is string mode) _database.SetPlannerPresentationMode(_selectedComponent.Id, mode); };
         panel.Children.Insert(1, label); panel.Children.Insert(2, _planningModeBox);
     }
-    private void Show(UIElement panel) { foreach (var item in new UIElement[] { DashboardPanel, BiblePanel, PlannerPanel, SettingsPanel, OtherPanel }) item.Visibility = Visibility.Collapsed; panel.Visibility = Visibility.Visible; }
+    private void Show(UIElement panel) { foreach (var item in new UIElement[] { DashboardPanel, BiblePanel, PlannerPanel, SettingsPanel, SongPanel, MediaPanel, OtherPanel }) item.Visibility = Visibility.Collapsed; panel.Visibility = Visibility.Visible; }
     private void Dashboard_Click(object sender, RoutedEventArgs e) => Show(DashboardPanel); private void Planner_Click(object sender, RoutedEventArgs e) { Show(PlannerPanel); LoadPlanner(); } private void Bible_Click(object sender, RoutedEventArgs e) => Show(BiblePanel); private void Settings_Click(object sender, RoutedEventArgs e) => Show(SettingsPanel);
-    private void Library_Click(object sender, RoutedEventArgs e) { OtherTitle.Text = "Song + Media Library"; OtherSubtitle.Text = "Add songs and media once, then reuse them in any planner."; SongLibraryCard.Visibility = MediaLibraryCard.Visibility = Visibility.Visible; LoadLibraries(); Show(OtherPanel); }
-    private void Theme_Click(object sender, RoutedEventArgs e) { OtherTitle.Text = "Theme Manager"; OtherSubtitle.Text = "Theme editing will be added next."; SongLibraryCard.Visibility = MediaLibraryCard.Visibility = Visibility.Collapsed; Show(OtherPanel); }
+    private void SongLibrary_Click(object sender, RoutedEventArgs e) { LoadLibraries(); Show(SongPanel); }
+    private void MediaLibrary_Click(object sender, RoutedEventArgs e) { LoadLibraries(); Show(MediaPanel); }
+    private void Theme_Click(object sender, RoutedEventArgs e) { OtherTitle.Text = "Theme Manager"; OtherSubtitle.Text = "Theme editing will be added next."; Show(OtherPanel); }
     private void LoadBooks() { BookBox.ItemsSource = _database.GetBooks(); if (BookBox.Items.Count > 0) BookBox.SelectedIndex = 0; }
     private void Book_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e) { if (BookBox.SelectedItem is BibleBook book) { ChapterBox.ItemsSource = _database.GetChapters(book.Id); if (ChapterBox.Items.Count > 0) ChapterBox.SelectedIndex = 0; } }
     private void Chapter_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e) { if (BookBox.SelectedItem is BibleBook book && ChapterBox.SelectedItem is int chapter) VerseList.ItemsSource = _database.GetVerses(book.Id, chapter); }
