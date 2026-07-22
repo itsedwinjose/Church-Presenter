@@ -1,0 +1,49 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Card Background -->
+    <Style x:Key="CardBorder" TargetType="Border">
+        <Setter Property="Background" Value="{DynamicResource BackgroundLightBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderLightBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="12"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="Effect">
+            <Setter.Value>
+                <DropShadowEffect BlurRadius="8" ShadowDepth="2" Opacity="0.1"/>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Card Container with Hover Effect -->
+    <ControlTemplate x:Key="CardTemplate" TargetType="ContentControl">
+        <Border Background="{TemplateBinding Background}"
+                BorderBrush="{TemplateBinding BorderBrush}"
+                BorderThickness="{TemplateBinding BorderThickness}"
+                CornerRadius="12"
+                Padding="{TemplateBinding Padding}">
+            <ContentPresenter/>
+        </Border>
+    </ControlTemplate>
+
+    <!-- Padding Standards -->
+    <Thickness x:Key="PaddingSmall">8</Thickness>
+    <Thickness x:Key="PaddingBase">12</Thickness>
+    <Thickness x:Key="PaddingMedium">16</Thickness>
+    <Thickness x:Key="PaddingLarge">20</Thickness>
+    <Thickness x:Key="PaddingXLarge">24</Thickness>
+
+    <!-- Margin Standards -->
+    <Thickness x:Key="MarginSmall">4</Thickness>
+    <Thickness x:Key="MarginBase">8</Thickness>
+    <Thickness x:Key="MarginMedium">12</Thickness>
+    <Thickness x:Key="MarginLarge">16</Thickness>
+    <Thickness x:Key="MarginXLarge">24</Thickness>
+
+    <!-- Corner Radius -->
+    <CornerRadius x:Key="CornerRadiusSmall">8</CornerRadius>
+    <CornerRadius x:Key="CornerRadiusBase">12</CornerRadius>
+    <CornerRadius x:Key="CornerRadiusLarge">16</CornerRadius>
+    <CornerRadius x:Key="CornerRadiusFull">999</CornerRadius>
+
+</ResourceDictionary>

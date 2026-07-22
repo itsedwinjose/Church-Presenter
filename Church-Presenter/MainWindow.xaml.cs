@@ -13,7 +13,19 @@ public partial class MainWindow : Window
     private MediaAsset? _selectedMedia;
     private System.Windows.Controls.ComboBox? _planningModeBox;
     private int _plannerId;
-    public MainWindow() { InitializeComponent(); _database.Initialize(); AddPlanningModeControl(); ServiceDatePicker.SelectedDate = DateTime.Today; LoadSettings(); LoadBooks(); LoadLibraries(); LoadPlanner(); Closing += MainWindow_Closing; }
+    public MainWindow()
+    {
+        InitializeComponent();
+        _database.Initialize();
+        AddPlanningModeControl();
+        var dp = GetControl<System.Windows.Controls.DatePicker>("ServiceDatePicker");
+        if (dp != null) dp.SelectedDate = DateTime.Today;
+        LoadSettings();
+        LoadBooks();
+        LoadLibraries();
+        LoadPlanner();
+        Closing += MainWindow_Closing;
+    }
     private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
         foreach (var window in Application.Current.Windows.OfType<Window>().Where(window => window != this).ToArray())
@@ -23,7 +35,8 @@ public partial class MainWindow : Window
     }
     private void AddPlanningModeControl()
     {
-        var panel = ComponentTypeLabel.Parent as System.Windows.Controls.StackPanel; if (panel is null) return;
+        var compTypeLabel = GetControl<System.Windows.Controls.TextBlock>("ComponentTypeLabel");
+        var panel = compTypeLabel?.Parent as System.Windows.Controls.StackPanel; if (panel is null) return;
         var label = new System.Windows.Controls.TextBlock { Text = "Presentation mode", Margin = new Thickness(0, 12, 0, 0) };
         _planningModeBox = new System.Windows.Controls.ComboBox { Margin = new Thickness(4), Width = 150 };
         _planningModeBox.Items.Add("Static"); _planningModeBox.Items.Add("Scrollable"); _planningModeBox.SelectionChanged += (_, _) => { if (_selectedComponent is not null && _planningModeBox.SelectedItem is string mode) _database.SetPlannerPresentationMode(_selectedComponent.Id, mode); };
@@ -99,10 +112,14 @@ public partial class MainWindow : Window
     private void LoadPlanner_Click(object sender, RoutedEventArgs e) => LoadPlanner();
     private void LoadPlanner()
     {
-        if (ServiceDatePicker is null || ServiceNameBox is null) return;
-        var name = string.IsNullOrWhiteSpace(ServiceNameBox.Text) ? "Sunday Service" : ServiceNameBox.Text.Trim();
-        _plannerId = _database.GetOrCreatePlanner(ServiceDatePicker.SelectedDate ?? DateTime.Today, name);
-        PlannerList.ItemsSource = _database.GetPlannerComponents(_plannerId); ClearComponentEditor();
+        var dp = GetControl<System.Windows.Controls.DatePicker>("ServiceDatePicker");
+        var sn = GetControl<System.Windows.Controls.TextBox>("ServiceNameBox");
+        var plannerList = GetControl<System.Windows.Controls.ListBox>("PlannerList");
+        if (dp is null || sn is null || plannerList is null) return;
+        var name = string.IsNullOrWhiteSpace(sn.Text) ? "Sunday Service" : sn.Text.Trim();
+        _plannerId = _database.GetOrCreatePlanner(dp.SelectedDate ?? DateTime.Today, name);
+        plannerList.ItemsSource = _database.GetPlannerComponents(_plannerId);
+        ClearComponentEditor();
     }
     private void AddComponent_Click(object sender, RoutedEventArgs e)
     {
@@ -138,20 +155,54 @@ public partial class MainWindow : Window
     }
     private void PlannerComponent_Selected(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
-        _selectedComponent = PlannerList.SelectedItem as PlannerComponent; if (_selectedComponent is null) { ClearComponentEditor(); return; }
-        ComponentTypeLabel.Text = _selectedComponent.Type == "Song" ? "Song — edits apply only to this planner" : _selectedComponent.Type; ComponentTitleBox.Text = _selectedComponent.Title; ComponentContentBox.Text = _selectedComponent.Content; if (_planningModeBox is not null) _planningModeBox.SelectedItem = _selectedComponent.PresentationMode;
+        var plannerList = GetControl<System.Windows.Controls.ListBox>("PlannerList");
+        _selectedComponent = plannerList?.SelectedItem as PlannerComponent; if (_selectedComponent is null) { ClearComponentEditor(); return; }
+        var compTypeLabel = GetControl<System.Windows.Controls.TextBlock>("ComponentTypeLabel");
+        var compTitle = GetControl<System.Windows.Controls.TextBox>("ComponentTitleBox");
+        var compContent = GetControl<System.Windows.Controls.TextBox>("ComponentContentBox");
+        if (compTypeLabel != null) compTypeLabel.Text = _selectedComponent.Type == "Song" ? "Song — edits apply only to this planner" : _selectedComponent.Type;
+        if (compTitle != null) compTitle.Text = _selectedComponent.Title;
+        if (compContent != null) compContent.Text = _selectedComponent.Content;
+        if (_planningModeBox is not null) _planningModeBox.SelectedItem = _selectedComponent.PresentationMode;
     }
     private void SaveComponent_Click(object sender, RoutedEventArgs e)
     {
         if (_selectedComponent is null) return;
-        _database.UpdatePlannerComponent(_selectedComponent.Id, ComponentTitleBox.Text.Trim(), ComponentContentBox.Text); RefreshPlanner(true);
+        var compTitleBox = GetControl<System.Windows.Controls.TextBox>("ComponentTitleBox");
+        var compContentBox = GetControl<System.Windows.Controls.TextBox>("ComponentContentBox");
+        if (_selectedComponent is not null && compTitleBox is not null && compContentBox is not null)
+        {
+            _database.UpdatePlannerComponent(_selectedComponent.Id, compTitleBox.Text.Trim(), compContentBox.Text);
+            RefreshPlanner(true);
+        }
     }
     private void MoveUp_Click(object sender, RoutedEventArgs e) => MoveSelected(-1);
     private void MoveDown_Click(object sender, RoutedEventArgs e) => MoveSelected(1);
     private void MoveSelected(int direction) { if (_selectedComponent is null) return; _database.MovePlannerComponent(_plannerId, _selectedComponent.Id, direction); RefreshPlanner(true); }
     private void RemoveComponent_Click(object sender, RoutedEventArgs e) { if (_selectedComponent is null) return; if (MessageBox.Show($"Remove '{_selectedComponent.Title}'?", "Church Presenter", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes) { _database.DeletePlannerComponent(_selectedComponent.Id); RefreshPlanner(); } }
-    private void RefreshPlanner(bool reselect = false) { var selectedId = reselect ? _selectedComponent?.Id : null; var components = _database.GetPlannerComponents(_plannerId); PlannerList.ItemsSource = components; if (selectedId is int id) PlannerList.SelectedItem = components.FirstOrDefault(x => x.Id == id); else ClearComponentEditor(); }
-    private void ClearComponentEditor() { _selectedComponent = null; if (ComponentTypeLabel is null) return; ComponentTypeLabel.Text = "Select a component"; ComponentTitleBox.Text = ""; ComponentContentBox.Text = ""; if (_planningModeBox is not null) _planningModeBox.SelectedIndex = -1; }
+    private void RefreshPlanner(bool reselect = false)
+    {
+        var selectedId = reselect ? _selectedComponent?.Id : null;
+        var components = _database.GetPlannerComponents(_plannerId);
+        var plannerList = GetControl<System.Windows.Controls.ListBox>("PlannerList");
+        if (plannerList is null) return;
+        plannerList.ItemsSource = components;
+        if (selectedId is int id) plannerList.SelectedItem = components.FirstOrDefault(x => x.Id == id); else ClearComponentEditor();
+    }
+    private void ClearComponentEditor()
+    {
+        _selectedComponent = null;
+        var compType = GetControl<System.Windows.Controls.TextBlock>("ComponentTypeLabel");
+        if (compType is null) return;
+        compType.Text = "Select a component";
+        var compTitle = GetControl<System.Windows.Controls.TextBox>("ComponentTitleBox");
+        var compContent = GetControl<System.Windows.Controls.TextBox>("ComponentContentBox");
+        if (compTitle != null) compTitle.Text = "";
+        if (compContent != null) compContent.Text = "";
+        if (_planningModeBox is not null) _planningModeBox.SelectedIndex = -1;
+    }
+
+    private T? GetControl<T>(string name) where T : class => FindName(name) as T;
     private void PresentComponent_Click(object sender, RoutedEventArgs e)
     {
         if (_plannerId == 0) LoadPlanner();
@@ -159,7 +210,7 @@ public partial class MainWindow : Window
         if (components.Count == 0) { MessageBox.Show("Add a planner component before starting presentation.", "Church Presenter"); return; }
         new OperatorConsoleWindow(_database, components) { Owner = this }.Show();
     }
-    private void LoadLibraries() { SongList.ItemsSource = _database.GetSongs(); MediaList.ItemsSource = _database.GetMediaAssets(); }
+    private void LoadLibraries() { SongList.ItemsSource = _database.GetSongs(); }
     private void SaveSong_Click(object sender, RoutedEventArgs e)
     {
         if (string.IsNullOrWhiteSpace(SongTitleBox.Text) || string.IsNullOrWhiteSpace(SongLyricsBox.Text)) { MessageBox.Show("Enter both a song title and lyrics.", "Church Presenter"); return; }
@@ -180,14 +231,12 @@ public partial class MainWindow : Window
     }
     private void SaveMedia_Click(object sender, RoutedEventArgs e)
     {
-        var selected = MediaTypeBox.SelectedItem as System.Windows.Controls.ComboBoxItem; var type = selected?.Content?.ToString() ?? "Image";
-        var filter = type == "Image" ? "Image files|*.png;*.jpg;*.jpeg;*.bmp;*.gif|All files|*.*" : type == "Video" ? "Video files|*.mp4;*.avi;*.wmv;*.mov|All files|*.*" : "Audio files|*.mp3;*.wav;*.wma;*.m4a|All files|*.*";
-        var picker = new OpenFileDialog { Filter = filter, Title = $"Choose {type.ToLowerInvariant()} file" };
-        if (picker.ShowDialog() != true) return;
-        var title = string.IsNullOrWhiteSpace(MediaTitleBox.Text) ? System.IO.Path.GetFileNameWithoutExtension(picker.FileName) : MediaTitleBox.Text.Trim();
-        _database.SaveMediaAsset(type, title, picker.FileName); LoadLibraries(); MediaTitleBox.Clear();
+        // Media handling is now managed by MediaLibraryView
     }
-    private void Media_Selected(object sender, System.Windows.Controls.SelectionChangedEventArgs e) { _selectedMedia = MediaList.SelectedItem as MediaAsset; if (_selectedMedia is not null) MediaTitleBox.Text = _selectedMedia.Title; }
+    private void Media_Selected(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        // Media selection is now managed by MediaLibraryView
+    }
     private void Preview_Click(object sender, RoutedEventArgs e) => Present("Church Presenter", "Your presentation preview appears here.", "Paragraph");
     private void Present(string title, string content, string componentType)
     {

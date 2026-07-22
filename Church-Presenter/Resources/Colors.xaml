@@ -1,0 +1,57 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Primary Colors -->
+    <Color x:Key="PrimaryColor">#5B5CEB</Color>
+    <SolidColorBrush x:Key="PrimaryBrush" Color="{StaticResource PrimaryColor}"/>
+
+    <!-- Neutrals -->
+    <Color x:Key="BackgroundLight">#FFFFFF</Color>
+    <SolidColorBrush x:Key="BackgroundLightBrush" Color="{StaticResource BackgroundLight}"/>
+
+    <Color x:Key="BackgroundDark">#F3F3F3</Color>
+    <SolidColorBrush x:Key="BackgroundDarkBrush" Color="{StaticResource BackgroundDark}"/>
+
+    <Color x:Key="SurfaceLight">#FAFAFA</Color>
+    <SolidColorBrush x:Key="SurfaceLightBrush" Color="{StaticResource SurfaceLight}"/>
+
+    <Color x:Key="TextPrimary">#212121</Color>
+    <SolidColorBrush x:Key="TextPrimaryBrush" Color="{StaticResource TextPrimary}"/>
+
+    <Color x:Key="TextSecondary">#616161</Color>
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="{StaticResource TextSecondary}"/>
+
+    <Color x:Key="TextTertiary">#9E9E9E</Color>
+    <SolidColorBrush x:Key="TextTertiaryBrush" Color="{StaticResource TextTertiary}"/>
+
+    <Color x:Key="BorderLight">#E0E0E0</Color>
+    <SolidColorBrush x:Key="BorderLightBrush" Color="{StaticResource BorderLight}"/>
+
+    <Color x:Key="BorderDark">#D0D0D0</Color>
+    <SolidColorBrush x:Key="BorderDarkBrush" Color="{StaticResource BorderDark}"/>
+
+    <!-- State Colors -->
+    <Color x:Key="SuccessColor">#4CAF50</Color>
+    <SolidColorBrush x:Key="SuccessBrush" Color="{StaticResource SuccessColor}"/>
+
+    <Color x:Key="WarningColor">#FF9800</Color>
+    <SolidColorBrush x:Key="WarningBrush" Color="{StaticResource WarningColor}"/>
+
+    <Color x:Key="ErrorColor">#F44336</Color>
+    <SolidColorBrush x:Key="ErrorBrush" Color="{StaticResource ErrorColor}"/>
+
+    <Color x:Key="InfoColor">#2196F3</Color>
+    <SolidColorBrush x:Key="InfoBrush" Color="{StaticResource InfoColor}"/>
+
+    <!-- Hover & Pressed States -->
+    <Color x:Key="PrimaryHover">#4A4ADA</Color>
+    <SolidColorBrush x:Key="PrimaryHoverBrush" Color="{StaticResource PrimaryHover}"/>
+
+    <Color x:Key="PrimaryPressed">#3A3AC9</Color>
+    <SolidColorBrush x:Key="PrimaryPressedBrush" Color="{StaticResource PrimaryPressed}"/>
+
+    <!-- Overlay & Transparency -->
+    <Color x:Key="OverlayDark">#000000</Color>
+    <SolidColorBrush x:Key="OverlayDarkBrush" Color="{StaticResource OverlayDark}" Opacity="0.5"/>
+
+</ResourceDictionary>

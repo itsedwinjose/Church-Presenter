@@ -4,6 +4,15 @@
              xmlns:local="clr-namespace:Church_Presenter"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
-         
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Resources/PlannerResources.xaml"/>
+                <ResourceDictionary Source="/Resources/Colors.xaml"/>
+                <ResourceDictionary Source="/Resources/Typography.xaml"/>
+                <ResourceDictionary Source="/Resources/Buttons.xaml"/>
+                <ResourceDictionary Source="/Resources/Cards.xaml"/>
+                <ResourceDictionary Source="/Resources/MediaStyles.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
     </Application.Resources>
 </Application>

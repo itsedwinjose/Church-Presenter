@@ -1,0 +1,25 @@
+<UserControl x:Class="Church_Presenter.Views.Planner.TimelineView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:Church_Presenter.ViewModels"
+             xmlns:local="clr-namespace:Church_Presenter.Views.Planner">
+  <Border Style="{StaticResource Card}">
+    <StackPanel>
+      <TextBlock Text="Planner" FontWeight="SemiBold"/>
+      <ScrollViewer VerticalScrollBarVisibility="Auto" Height="520">
+        <ItemsControl ItemsSource="{Binding Items}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <VirtualizingStackPanel/>
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <local:PlannerItemControl/>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+    </StackPanel>
+  </Border>
+</UserControl>

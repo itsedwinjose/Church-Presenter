@@ -1,0 +1,15 @@
+<UserControl x:Class="Church_Presenter.Views.MediaLibrary.StatusCard"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Border Style="{DynamicResource CardBorder}" Padding="12,10">
+        <StackPanel Orientation="Horizontal">
+            <Border Width="28" Height="28" CornerRadius="8" Background="#F4F1FF" Margin="0,0,10,0">
+                <TextBlock Text="{Binding Icon, RelativeSource={RelativeSource AncestorType=UserControl}}" Foreground="#5B5CEB" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13"/>
+            </Border>
+            <StackPanel>
+                <TextBlock Text="{Binding Title, RelativeSource={RelativeSource AncestorType=UserControl}}" Foreground="#64748B" FontSize="11"/>
+                <TextBlock Text="{Binding Value, RelativeSource={RelativeSource AncestorType=UserControl}}" Foreground="#1E293B" FontSize="13" FontWeight="SemiBold" Margin="0,2,0,0"/>
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</UserControl>

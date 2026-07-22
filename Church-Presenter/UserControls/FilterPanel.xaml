@@ -1,0 +1,67 @@
+<UserControl x:Class="Church_Presenter.UserControls.FilterPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d"
+             d:DesignHeight="400" d:DesignWidth="250">
+    <Border Style="{StaticResource CardBorder}" Margin="0,12,0,0">
+        <StackPanel Margin="16">
+            <!-- Media Type Section -->
+            <TextBlock Text="Media Type" FontWeight="SemiBold" 
+                       FontSize="{DynamicResource FontSizeBase}"
+                       Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,12"/>
+
+            <StackPanel Margin="0,0,0,16">
+                <RadioButton Content="All" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,8"/>
+                <RadioButton Content="Images" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,8"/>
+                <RadioButton Content="Videos" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,8"/>
+                <RadioButton Content="Audio" Foreground="{DynamicResource TextPrimaryBrush}"/>
+            </StackPanel>
+
+            <!-- Divider -->
+            <Border Height="1" Background="{DynamicResource BorderLightBrush}" Margin="0,0,0,16"/>
+
+            <!-- Sort Section -->
+            <TextBlock Text="Sort By" FontWeight="SemiBold" 
+                       FontSize="{DynamicResource FontSizeBase}"
+                       Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,12"/>
+
+            <StackPanel Margin="0,0,0,16">
+                <RadioButton Content="Newest" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,8"/>
+                <RadioButton Content="Oldest" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,8"/>
+                <RadioButton Content="Name" Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,8"/>
+                <RadioButton Content="Size" Foreground="{DynamicResource TextPrimaryBrush}"/>
+            </StackPanel>
+
+            <!-- Divider -->
+            <Border Height="1" Background="{DynamicResource BorderLightBrush}" Margin="0,0,0,16"/>
+
+            <!-- Tags Section -->
+            <TextBlock Text="Tags" FontWeight="SemiBold" 
+                       FontSize="{DynamicResource FontSizeBase}"
+                       Foreground="{DynamicResource TextPrimaryBrush}" Margin="0,0,0,12"/>
+
+            <WrapPanel>
+                <Border Background="{DynamicResource BackgroundDarkBrush}" 
+                        CornerRadius="16" Padding="10,6" Margin="0,0,8,8">
+                    <TextBlock Text="Christmas" 
+                               Foreground="{DynamicResource TextPrimaryBrush}"
+                               FontSize="{DynamicResource FontSizeSmall}"/>
+                </Border>
+                <Border Background="{DynamicResource BackgroundDarkBrush}" 
+                        CornerRadius="16" Padding="10,6" Margin="0,0,8,8">
+                    <TextBlock Text="Easter" 
+                               Foreground="{DynamicResource TextPrimaryBrush}"
+                               FontSize="{DynamicResource FontSizeSmall}"/>
+                </Border>
+                <Border Background="{DynamicResource BackgroundDarkBrush}" 
+                        CornerRadius="16" Padding="10,6" Margin="0,0,8,8">
+                    <TextBlock Text="Praise" 
+                               Foreground="{DynamicResource TextPrimaryBrush}"
+                               FontSize="{DynamicResource FontSizeSmall}"/>
+                </Border>
+            </WrapPanel>
+        </StackPanel>
+    </Border>
+</UserControl>
