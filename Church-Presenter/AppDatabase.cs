@@ -252,7 +252,7 @@ public sealed class AppDatabase
     {
         using var c = Open();
         using var cmd = c.CreateCommand();
-        cmd.CommandText = "SELECT b.Name,v.BookId,v.ChapterNumber,v.VerseNumber,v.VerseText FROM BibleVerses v JOIN BibleBooks b ON b.Id=v.BookId WHERE v.BookId=$id AND v.ChapterNumber=$chapter ORDER BY v.VerseNumber";
+        cmd.CommandText = "SELECT v.Id,b.Name,v.BookId,v.ChapterNumber,v.VerseNumber,v.VerseText FROM BibleVerses v JOIN BibleBooks b ON b.Id=v.BookId WHERE v.BookId=$id AND v.ChapterNumber=$chapter ORDER BY v.VerseNumber";
         cmd.Parameters.AddWithValue("$id", bookId);
         cmd.Parameters.AddWithValue("$chapter", chapter);
         return Read(cmd);
@@ -263,7 +263,7 @@ public sealed class AppDatabase
         if (string.IsNullOrWhiteSpace(query)) return Array.Empty<BibleVerse>();
         using var c = Open();
         using var cmd = c.CreateCommand();
-        cmd.CommandText = "SELECT b.Name,v.BookId,v.ChapterNumber,v.VerseNumber,v.VerseText FROM BibleSearch s JOIN BibleVerses v ON v.Id=s.rowid JOIN BibleBooks b ON b.Id=v.BookId WHERE BibleSearch MATCH $q LIMIT 100";
+        cmd.CommandText = "SELECT v.Id,b.Name,v.BookId,v.ChapterNumber,v.VerseNumber,v.VerseText FROM BibleSearch s JOIN BibleVerses v ON v.Id=s.rowid JOIN BibleBooks b ON b.Id=v.BookId WHERE BibleSearch MATCH $q LIMIT 100";
         cmd.Parameters.AddWithValue("$q", query.Trim().Replace("'", " "));
         return Read(cmd);
     }
@@ -272,8 +272,173 @@ public sealed class AppDatabase
     {
         using var r = cmd.ExecuteReader();
         var x = new List<BibleVerse>();
-        while (r.Read()) { var book = r.GetString(0); var ch = r.GetInt32(2); var verse = r.GetInt32(3); x.Add(new BibleVerse { BookId = r.GetInt32(1), Chapter = ch, Verse = verse, Text = r.GetString(4), Reference = $"{book} {ch}:{verse}" }); }
+        while (r.Read()) { var book = r.GetString(1); var ch = r.GetInt32(3); var verse = r.GetInt32(4); x.Add(new BibleVerse { Id = r.GetInt32(0), BookId = r.GetInt32(2), Chapter = ch, Verse = verse, Text = r.GetString(5), Reference = $"{book} {ch}:{verse}" }); }
         return x;
+    }
+
+    public void AddBibleBook(string testament, string bookName)
+    {
+        if (string.IsNullOrWhiteSpace(bookName)) throw new InvalidOperationException("Enter a Bible book name.");
+        using var c = Open();
+        using var cmd = c.CreateCommand();
+        cmd.CommandText = "INSERT INTO BibleBooks(Name,Testament,SortOrder) VALUES($name,$testament,(SELECT COALESCE(MAX(SortOrder),0)+1 FROM BibleBooks))";
+        cmd.Parameters.AddWithValue("$name", bookName.Trim());
+        cmd.Parameters.AddWithValue("$testament", string.IsNullOrWhiteSpace(testament) ? "Old" : testament.Trim());
+        try
+        {
+            cmd.ExecuteNonQuery();
+        }
+        catch (SqliteException ex) when (ex.SqliteErrorCode == 19)
+        {
+            throw new InvalidOperationException("A Bible book with that name already exists.", ex);
+        }
+    }
+
+    public void UpdateBibleBook(int bookId, string testament, string bookName)
+    {
+        if (bookId <= 0) throw new InvalidOperationException("Select a Bible book first.");
+        if (string.IsNullOrWhiteSpace(bookName)) throw new InvalidOperationException("Enter a Bible book name.");
+        using var c = Open();
+        using var cmd = c.CreateCommand();
+        cmd.CommandText = "UPDATE BibleBooks SET Name=$name, Testament=$testament WHERE Id=$id";
+        cmd.Parameters.AddWithValue("$id", bookId);
+        cmd.Parameters.AddWithValue("$name", bookName.Trim());
+        cmd.Parameters.AddWithValue("$testament", string.IsNullOrWhiteSpace(testament) ? "Old" : testament.Trim());
+        try
+        {
+            if (cmd.ExecuteNonQuery() == 0) throw new InvalidOperationException("The selected Bible book no longer exists.");
+        }
+        catch (SqliteException ex) when (ex.SqliteErrorCode == 19)
+        {
+            throw new InvalidOperationException("A Bible book with that name already exists.", ex);
+        }
+    }
+
+    public int GetBookVerseCount(int bookId)
+    {
+        using var c = Open();
+        using var cmd = c.CreateCommand();
+        cmd.CommandText = "SELECT COUNT(*) FROM BibleVerses WHERE BookId=$id";
+        cmd.Parameters.AddWithValue("$id", bookId);
+        return Convert.ToInt32(cmd.ExecuteScalar());
+    }
+
+    public int GetChapterVerseCount(int bookId, int chapter)
+    {
+        using var c = Open();
+        using var cmd = c.CreateCommand();
+        cmd.CommandText = "SELECT COUNT(*) FROM BibleVerses WHERE BookId=$id AND ChapterNumber=$chapter";
+        cmd.Parameters.AddWithValue("$id", bookId);
+        cmd.Parameters.AddWithValue("$chapter", chapter);
+        return Convert.ToInt32(cmd.ExecuteScalar());
+    }
+
+    public bool CanDeleteBibleBook(int bookId) => GetBookVerseCount(bookId) == 0;
+
+    public bool CanDeleteBibleChapter(int bookId, int chapter) => GetChapterVerseCount(bookId, chapter) == 0;
+
+    public void DeleteBibleBook(int bookId)
+    {
+        if (!CanDeleteBibleBook(bookId)) throw new InvalidOperationException("Delete every chapter verse in this book before deleting the book.");
+        using var c = Open();
+        using var cmd = c.CreateCommand();
+        cmd.CommandText = "DELETE FROM BibleBooks WHERE Id=$id";
+        cmd.Parameters.AddWithValue("$id", bookId);
+        cmd.ExecuteNonQuery();
+    }
+
+    public void RenameBibleChapter(int bookId, int chapter, int newChapter)
+    {
+        if (bookId <= 0) throw new InvalidOperationException("Select a Bible book first.");
+        if (chapter < 1 || newChapter < 1) throw new InvalidOperationException("Chapter numbers must be 1 or greater.");
+        if (chapter == newChapter) return;
+        using var c = Open();
+        using var tx = c.BeginTransaction();
+        using var count = c.CreateCommand();
+        count.Transaction = tx;
+        count.CommandText = "SELECT COUNT(*) FROM BibleVerses WHERE BookId=$id AND ChapterNumber=$chapter";
+        count.Parameters.AddWithValue("$id", bookId);
+        count.Parameters.AddWithValue("$chapter", chapter);
+        if (Convert.ToInt32(count.ExecuteScalar()) == 0) throw new InvalidOperationException("The selected chapter no longer exists.");
+        using var clash = c.CreateCommand();
+        clash.Transaction = tx;
+        clash.CommandText = "SELECT COUNT(*) FROM BibleVerses WHERE BookId=$id AND ChapterNumber=$chapter";
+        clash.Parameters.AddWithValue("$id", bookId);
+        clash.Parameters.AddWithValue("$chapter", newChapter);
+        if (Convert.ToInt32(clash.ExecuteScalar()) > 0) throw new InvalidOperationException("A chapter with that number already exists in this book.");
+        using var cmd = c.CreateCommand();
+        cmd.Transaction = tx;
+        cmd.CommandText = "UPDATE BibleVerses SET ChapterNumber=$newChapter WHERE BookId=$id AND ChapterNumber=$chapter";
+        cmd.Parameters.AddWithValue("$id", bookId);
+        cmd.Parameters.AddWithValue("$chapter", chapter);
+        cmd.Parameters.AddWithValue("$newChapter", newChapter);
+        cmd.ExecuteNonQuery();
+        tx.Commit();
+    }
+
+    public void DeleteBibleChapter(int bookId, int chapter)
+    {
+        if (!CanDeleteBibleChapter(bookId, chapter)) throw new InvalidOperationException("Delete every verse in this chapter before deleting the chapter.");
+    }
+
+    public void AddBibleVerse(int bookId, int chapter, int verse, string text)
+    {
+        if (bookId <= 0) throw new InvalidOperationException("Select a Bible book first.");
+        if (chapter < 1) throw new InvalidOperationException("Enter a valid chapter number.");
+        if (verse < 1) throw new InvalidOperationException("Enter a valid verse number.");
+        if (string.IsNullOrWhiteSpace(text)) throw new InvalidOperationException("Enter Bible verse text.");
+        using var c = Open();
+        using var cmd = c.CreateCommand();
+        cmd.CommandText = "INSERT INTO BibleVerses(BookId,ChapterNumber,VerseNumber,VerseText) VALUES($book,$chapter,$verse,$text)";
+        cmd.Parameters.AddWithValue("$book", bookId);
+        cmd.Parameters.AddWithValue("$chapter", chapter);
+        cmd.Parameters.AddWithValue("$verse", verse);
+        cmd.Parameters.AddWithValue("$text", text.Trim());
+        try
+        {
+            cmd.ExecuteNonQuery();
+        }
+        catch (SqliteException ex) when (ex.SqliteErrorCode == 19)
+        {
+            throw new InvalidOperationException("That verse number already exists in the selected chapter.", ex);
+        }
+    }
+
+    public void UpdateBibleVerse(int verseId, int chapter, int verse, string text)
+    {
+        if (verseId <= 0) throw new InvalidOperationException("Select a Bible verse first.");
+        if (chapter < 1) throw new InvalidOperationException("Enter a valid chapter number.");
+        if (verse < 1) throw new InvalidOperationException("Enter a valid verse number.");
+        if (string.IsNullOrWhiteSpace(text)) throw new InvalidOperationException("Enter Bible verse text.");
+        using var c = Open();
+        using var book = c.CreateCommand();
+        book.CommandText = "SELECT BookId FROM BibleVerses WHERE Id=$id";
+        book.Parameters.AddWithValue("$id", verseId);
+        var bookId = book.ExecuteScalar() as long?;
+        if (bookId is null) throw new InvalidOperationException("The selected Bible verse no longer exists.");
+        using var cmd = c.CreateCommand();
+        cmd.CommandText = "UPDATE BibleVerses SET ChapterNumber=$chapter, VerseNumber=$verse, VerseText=$text WHERE Id=$id";
+        cmd.Parameters.AddWithValue("$id", verseId);
+        cmd.Parameters.AddWithValue("$chapter", chapter);
+        cmd.Parameters.AddWithValue("$verse", verse);
+        cmd.Parameters.AddWithValue("$text", text.Trim());
+        try
+        {
+            cmd.ExecuteNonQuery();
+        }
+        catch (SqliteException ex) when (ex.SqliteErrorCode == 19)
+        {
+            throw new InvalidOperationException("That verse number already exists in the selected chapter.", ex);
+        }
+    }
+
+    public void DeleteBibleVerse(int verseId)
+    {
+        using var c = Open();
+        using var cmd = c.CreateCommand();
+        cmd.CommandText = "DELETE FROM BibleVerses WHERE Id=$id";
+        cmd.Parameters.AddWithValue("$id", verseId);
+        cmd.ExecuteNonQuery();
     }
 
     public void ImportBibleCsv(string path)

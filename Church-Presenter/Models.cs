@@ -1,7 +1,7 @@
 namespace Church_Presenter;
 
 public sealed class BibleBook { public int Id { get; init; } public int SortOrder { get; init; } public string Name { get; init; } = string.Empty; public string Testament { get; init; } = string.Empty; }
-public sealed class BibleVerse { public int BookId { get; init; } public int Chapter { get; init; } public int Verse { get; init; } public string Text { get; init; } = string.Empty; public string Reference { get; init; } = string.Empty; }
+public sealed class BibleVerse { public int Id { get; init; } public int BookId { get; init; } public int Chapter { get; init; } public int Verse { get; init; } public string Text { get; init; } = string.Empty; public string Reference { get; init; } = string.Empty; }
 public sealed class PlannerComponent { public int Id { get; init; } public int Position { get; init; } public string Type { get; init; } = string.Empty; public string Title { get; init; } = string.Empty; public string Content { get; init; } = string.Empty; public string PresentationMode { get; init; } = "Static"; public int ScrollSpeed { get; init; } = 2; public bool IsCompleted { get; set; } public string DisplayTitle => $"{Position + 1}. {Type}: {Title}"; }
 public sealed class Song { public int Id { get; init; } public string Title { get; init; } = string.Empty; public string Lyrics { get; init; } = string.Empty; public string DisplayTitle => Title; }
 public sealed class MediaAsset { public int Id { get; init; } public string Type { get; init; } = string.Empty; public string Title { get; init; } = string.Empty; public string FilePath { get; init; } = string.Empty; public string DisplayTitle => $"{Type}: {Title}"; }
