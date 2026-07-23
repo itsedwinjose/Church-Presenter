@@ -42,22 +42,40 @@
       <Setter Property="Foreground" Value="#66708A"/>
       <Setter Property="Margin" Value="0,0,0,4"/>
     </Style>
+    <Style TargetType="TextBox">
+      <Setter Property="Padding" Value="8"/>
+      <Setter Property="BorderBrush" Value="#D9DEEF"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Background" Value="White"/>
+    </Style>
+    <Style TargetType="ComboBox">
+      <Setter Property="Padding" Value="7"/>
+      <Setter Property="BorderBrush" Value="#D9DEEF"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Background" Value="White"/>
+    </Style>
+    <Style TargetType="DatePicker">
+      <Setter Property="BorderBrush" Value="#D9DEEF"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Background" Value="White"/>
+    </Style>
   </UserControl.Resources>
 
-  <Grid Margin="18">
-    <Grid.RowDefinitions>
-      <RowDefinition Height="Auto"/>
-      <RowDefinition Height="*"/>
-      <RowDefinition Height="Auto"/>
-    </Grid.RowDefinitions>
+  <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" CanContentScroll="False">
+    <Grid Margin="18">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="*"/>
+        <RowDefinition Height="Auto"/>
+      </Grid.RowDefinitions>
 
-    <Border Grid.RowSpan="3" Style="{StaticResource CardBorder}" Padding="18"/>
+      <Border Grid.RowSpan="3" Style="{StaticResource CardBorder}" Padding="18"/>
 
-    <Grid>
+      <Grid>
       <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="330"/>
+        <ColumnDefinition Width="320"/>
         <ColumnDefinition Width="*"/>
-        <ColumnDefinition Width="340"/>
+        <ColumnDefinition Width="360"/>
       </Grid.ColumnDefinitions>
       <Grid.RowDefinitions>
         <RowDefinition Height="Auto"/>
@@ -73,235 +91,203 @@
 
         <StackPanel Orientation="Horizontal">
           <Border Width="48" Height="48" Background="#F1EEFF" CornerRadius="12">
-            <TextBlock Text="🖼" FontSize="22" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#5B5CEB"/>
+            <TextBlock Text="🗓" FontSize="22" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#5B5CEB"/>
           </Border>
           <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
             <TextBlock Text="Planner" FontSize="24" FontWeight="Bold" Foreground="#1F2A44"/>
-            <TextBlock Text="Create and organize worship services" FontSize="13" Foreground="#66708A" Margin="0,3,0,0"/>
+            <TextBlock Text="Create, save, edit, and present service plans." FontSize="13" Foreground="#66708A" Margin="0,3,0,0"/>
           </StackPanel>
         </StackPanel>
 
         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-          <StackPanel Margin="0,0,10,0">
-            <TextBlock Style="{StaticResource FieldLabel}" Text="Date"/>
-            <Border Style="{StaticResource CardBorder}" Padding="12,8">
-              <TextBlock Text="25 May 2024 (Saturday)" Foreground="#334155"/>
-            </Border>
-          </StackPanel>
-          <StackPanel Margin="0,0,10,0">
-            <TextBlock Style="{StaticResource FieldLabel}" Text="Service"/>
-            <Border Style="{StaticResource CardBorder}" Padding="12,8" MinWidth="190">
-              <TextBlock Text="Saturday Evening Service" Foreground="#334155"/>
-            </Border>
-          </StackPanel>
-          <Button Content="Save Planner" Background="#5B5CEB" Foreground="White" BorderThickness="0" Padding="18,10" Margin="0,18,8,0"/>
-          <Button Content="Present" Style="{StaticResource SubtleButton}" Margin="0,18,0,0"/>
+          <Button Content="New Plan" Style="{StaticResource SubtleButton}" Command="{Binding NewPlanCommand}"/>
+          <Button Content="Save Plan" Background="#5B5CEB" Foreground="White" BorderThickness="0" Padding="18,10" Margin="8,0,8,0" Command="{Binding SavePlanCommand}"/>
+          <Button Content="Delete Plan" Style="{StaticResource SubtleButton}" Command="{Binding DeletePlanCommand}" IsEnabled="{Binding HasSavedPlan}" Margin="0,0,8,0"/>
+          <Button Content="Present" Style="{StaticResource SubtleButton}" Command="{Binding PresentPlanCommand}"/>
         </StackPanel>
       </Grid>
 
       <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,16,0">
         <Border Style="{StaticResource CardBorder}" Margin="0,0,0,14">
           <StackPanel>
-            <TextBlock Text="Add Components" Style="{StaticResource SectionTitle}"/>
-            <TextBlock Text="Library Components" Foreground="#66708A" FontSize="12" Margin="0,14,0,8"/>
-            <ItemsControl ItemsSource="{Binding Toolbox}">
-              <ItemsControl.ItemTemplate>
+            <TextBlock Text="Saved Plans" Style="{StaticResource SectionTitle}"/>
+            <TextBlock Text="Open an existing service plan to edit it." Foreground="#66708A" FontSize="12" Margin="0,8,0,10"/>
+            <ListBox ItemsSource="{Binding Plans}" SelectedItem="{Binding SelectedPlan, Mode=TwoWay}" BorderThickness="0" Background="Transparent">
+              <ListBox.ItemTemplate>
                 <DataTemplate>
                   <Border Background="#FBFBFE" BorderBrush="#E8ECF6" BorderThickness="1" CornerRadius="10" Padding="10" Margin="0,0,0,8">
-                    <Grid>
-                      <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="34"/>
-                        <ColumnDefinition Width="*"/>
-                      </Grid.ColumnDefinitions>
-                      <Border Width="28" Height="28" Background="#F1EEFF" CornerRadius="8" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding IconGlyph}" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#5B5CEB"/>
-                      </Border>
-                      <StackPanel Grid.Column="1" Margin="10,0,0,0">
-                        <TextBlock Text="{Binding Title}" Foreground="#24324A" FontWeight="SemiBold"/>
-                        <TextBlock Text="{Binding Description}" Foreground="#66708A" FontSize="11"/>
-                      </StackPanel>
-                    </Grid>
+                    <StackPanel>
+                      <TextBlock Text="{Binding DisplayTitle}" Foreground="#24324A" FontWeight="SemiBold"/>
+                      <TextBlock Text="{Binding ThemeName}" Foreground="#66708A" FontSize="11"/>
+                      <TextBlock Foreground="#5B5CEB" FontSize="11" FontWeight="SemiBold">
+                        <Run Text="{Binding ItemCount}"/>
+                        <Run Text=" items"/>
+                      </TextBlock>
+                    </StackPanel>
                   </Border>
                 </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
+              </ListBox.ItemTemplate>
+            </ListBox>
           </StackPanel>
         </Border>
 
         <Border Style="{StaticResource CardBorder}">
           <StackPanel>
             <TextBlock Text="Planner Information" Style="{StaticResource SectionTitle}"/>
-            <Grid Margin="0,12,0,0">
-              <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="80"/>
-                <ColumnDefinition Width="*"/>
-              </Grid.ColumnDefinitions>
-              <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-              </Grid.RowDefinitions>
-              <TextBlock Text="Date:" Foreground="#66708A"/>
-              <TextBlock Grid.Column="1" Text="25 May 2024 (Saturday)" Foreground="#24324A"/>
-              <TextBlock Grid.Row="1" Text="Service:" Foreground="#66708A" Margin="0,8,0,0"/>
-              <TextBlock Grid.Row="1" Grid.Column="1" Text="Faith &amp; Hope" Foreground="#24324A" Margin="0,8,0,0"/>
-              <TextBlock Grid.Row="2" Text="Theme:" Foreground="#66708A" Margin="0,8,0,0"/>
-              <TextBlock Grid.Row="2" Grid.Column="1" Text="Saturday Evening Service" Foreground="#24324A" Margin="0,8,0,0"/>
-            </Grid>
-            <Button Content="Edit Information" Style="{StaticResource SubtleButton}" Margin="0,14,0,0"/>
+            <TextBlock Text="Save the plan before adding components." Foreground="#66708A" FontSize="12" Margin="0,8,0,10"/>
+
+            <TextBlock Text="Service date" Style="{StaticResource FieldLabel}"/>
+            <DatePicker SelectedDate="{Binding ServiceDate, Mode=TwoWay}" Margin="0,0,0,10"/>
+
+            <TextBlock Text="Service name" Style="{StaticResource FieldLabel}"/>
+            <TextBox Text="{Binding ServiceName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,10"/>
+
+            <TextBlock Text="Theme" Style="{StaticResource FieldLabel}"/>
+            <TextBox Text="{Binding ThemeName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,12"/>
+
+            <Border Background="#F8FAFC" BorderBrush="#E8ECF6" BorderThickness="1" CornerRadius="10" Padding="10">
+              <StackPanel>
+                <TextBlock Text="{Binding PlannerHeading}" FontWeight="SemiBold" Foreground="#24324A"/>
+                <TextBlock Text="{Binding PlannerDateSummary}" Foreground="#66708A" FontSize="12" Margin="0,3,0,0"/>
+                <TextBlock Text="{Binding StatusMessage}" Foreground="#5B5CEB" FontSize="11" Margin="0,8,0,0" TextWrapping="Wrap"/>
+              </StackPanel>
+            </Border>
           </StackPanel>
         </Border>
       </StackPanel>
 
-      <Border Grid.Row="1" Grid.Column="1" Style="{StaticResource CardBorder}" Margin="0,0,16,0">
-        <Grid>
-          <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-          </Grid.RowDefinitions>
+      <Grid Grid.Row="1" Grid.Column="1" Margin="0,0,16,0">
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto"/>
+          <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
 
-          <Grid Margin="0,0,0,12">
-            <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="*"/>
-              <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
+        <Border Style="{StaticResource CardBorder}" Margin="0,0,0,14">
+          <StackPanel>
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+              </Grid.ColumnDefinitions>
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Text="Current Plan" Foreground="#24324A" FontWeight="SemiBold"/>
+                <Border Background="#EEF2FF" CornerRadius="10" Padding="8,2" Margin="10,0,0,0">
+                  <TextBlock Text="{Binding SelectedPlanSummary}" Foreground="#5B5CEB" FontSize="11" FontWeight="SemiBold"/>
+                </Border>
+              </StackPanel>
+              <TextBlock Grid.Column="1" Text="Choose a tool, then edit item details on the right." Foreground="#66708A" FontSize="11" VerticalAlignment="Center"/>
+            </Grid>
+
+            <TextBlock Text="Add Components" Foreground="#66708A" FontSize="12" Margin="0,12,0,8"/>
+            <ItemsControl ItemsSource="{Binding Toolbox}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <WrapPanel/>
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Button Command="{Binding DataContext.AddComponentCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Style="{StaticResource SubtleButton}" Margin="0,0,8,8" Padding="10,8">
+                    <StackPanel Orientation="Horizontal">
+                      <TextBlock Text="{Binding IconGlyph}" Margin="0,0,6,0"/>
+                      <TextBlock Text="{Binding Title}"/>
+                    </StackPanel>
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+
+        <Border Grid.Row="1" Style="{StaticResource CardBorder}">
+          <Grid>
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="*"/>
+              <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
             <StackPanel Orientation="Horizontal">
-              <TextBlock Text="Planner: " Foreground="#24324A" FontWeight="SemiBold"/>
-              <TextBlock Text="{Binding CurrentPlanner.Name}" Foreground="#24324A" FontWeight="SemiBold"/>
+              <TextBlock Text="Planner Items" Foreground="#24324A" FontWeight="SemiBold"/>
               <Border Background="#EEF2FF" CornerRadius="10" Padding="8,2" Margin="10,0,0,0">
-                <TextBlock Text="{Binding Items.Count, StringFormat={}{0} Items}" Foreground="#5B5CEB" FontSize="11" FontWeight="SemiBold"/>
+                <TextBlock Text="{Binding Items.Count, StringFormat={}{0} items}" Foreground="#5B5CEB" FontSize="11" FontWeight="SemiBold"/>
               </Border>
             </StackPanel>
-            <StackPanel Grid.Column="1" Orientation="Horizontal">
-              <Button Content="↶" Style="{StaticResource SubtleButton}" Padding="12,6"/>
-              <Button Content="🗑 Clear All" Style="{StaticResource SubtleButton}" Foreground="#EF4444" Margin="8,0,0,0"/>
-            </StackPanel>
-          </Grid>
 
-          <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-            <ItemsControl ItemsSource="{Binding Items}">
-              <ItemsControl.ItemTemplate>
+            <ListBox Grid.Row="1" ItemsSource="{Binding Items}" SelectedItem="{Binding SelectedItem, Mode=TwoWay}" BorderThickness="0" Background="Transparent" Margin="0,12,0,12">
+              <ListBox.ItemTemplate>
                 <DataTemplate>
                   <Border Background="White" BorderBrush="#E6EAF4" BorderThickness="1" CornerRadius="12" Padding="12" Margin="0,0,0,10">
                     <Grid>
                       <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="30"/>
-                        <ColumnDefinition Width="34"/>
+                        <ColumnDefinition Width="38"/>
                         <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="110"/>
-                        <ColumnDefinition Width="70"/>
-                        <ColumnDefinition Width="30"/>
+                        <ColumnDefinition Width="100"/>
+                        <ColumnDefinition Width="50"/>
                       </Grid.ColumnDefinitions>
-                      <TextBlock Text="⋮⋮" Foreground="#B0B7C8" VerticalAlignment="Center"/>
-                      <Border Grid.Column="1" Width="28" Height="28" Background="#F1EEFF" CornerRadius="8" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding Component.IconGlyph}" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#5B5CEB"/>
+                      <Border Width="28" Height="28" Background="#F1EEFF" CornerRadius="8" VerticalAlignment="Top">
+                        <TextBlock Text="{Binding Position, StringFormat={}{0:#}}" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#5B5CEB" FontWeight="SemiBold"/>
                       </Border>
-                      <StackPanel Grid.Column="2" Margin="10,0,0,0">
-                        <TextBlock Text="{Binding Component.Title}" FontWeight="SemiBold" Foreground="#24324A"/>
-                        <TextBlock Text="{Binding Subtitle}" FontSize="12" Foreground="#66708A"/>
+                      <StackPanel Grid.Column="1" Margin="10,0,0,0">
+                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" Foreground="#24324A"/>
+                        <TextBlock Text="{Binding Type}" Foreground="#66708A" FontSize="12"/>
+                        <TextBlock Text="{Binding Content}" Foreground="#94A3B8" FontSize="11" TextTrimming="CharacterEllipsis" MaxHeight="34"/>
                       </StackPanel>
-                      <TextBlock Grid.Column="3" Text="Auto" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#66708A"/>
-                      <TextBlock Grid.Column="4" Text="00:10" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#24324A"/>
-                      <TextBlock Grid.Column="5" Text="⋯" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#66708A" FontSize="18"/>
+                      <TextBlock Grid.Column="2" Text="{Binding PresentationMode}" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#66708A" FontSize="12"/>
+                      <TextBlock Grid.Column="3" Text="{Binding ScrollSpeed}" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#24324A"/>
                     </Grid>
                   </Border>
                 </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-          </ScrollViewer>
-        </Grid>
-      </Border>
+              </ListBox.ItemTemplate>
+            </ListBox>
+
+            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
+              <Button Content="Move Up" Style="{StaticResource SubtleButton}" Command="{Binding MoveSelectedItemCommand}" CommandParameter="-1"/>
+              <Button Content="Move Down" Style="{StaticResource SubtleButton}" Command="{Binding MoveSelectedItemCommand}" CommandParameter="1" Margin="8,0,0,0"/>
+              <Button Content="Remove" Style="{StaticResource SubtleButton}" Foreground="#EF4444" Command="{Binding RemoveSelectedItemCommand}" Margin="8,0,0,0"/>
+            </StackPanel>
+          </Grid>
+        </Border>
+      </Grid>
 
       <StackPanel Grid.Row="1" Grid.Column="2">
-        <Border Style="{StaticResource CardBorder}" Margin="0,0,0,14">
+        <Border Style="{StaticResource CardBorder}">
           <StackPanel>
             <TextBlock Text="Component Properties" Style="{StaticResource SectionTitle}"/>
             <Border Background="#FAFBFF" BorderBrush="#E8ECF6" BorderThickness="1" CornerRadius="10" Padding="10" Margin="0,12,0,12">
-              <Grid>
-                <Grid.ColumnDefinitions>
-                  <ColumnDefinition Width="34"/>
-                  <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                <Border Width="28" Height="28" Background="#F1EEFF" CornerRadius="8" VerticalAlignment="Center">
-                  <TextBlock Text="♪" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#5B5CEB"/>
-                </Border>
-                <StackPanel Grid.Column="1" Margin="10,0,0,0">
-                  <TextBlock Text="Song / Lyrics" FontWeight="SemiBold" Foreground="#24324A"/>
-                  <TextBlock Text="Amazing Grace" FontSize="12" Foreground="#66708A"/>
-                </StackPanel>
-              </Grid>
-            </Border>
-
-            <TextBlock Text="Display Mode" Style="{StaticResource FieldLabel}"/>
-            <Border Style="{StaticResource CardBorder}" Padding="12,8" Margin="0,0,0,12">
-              <TextBlock Text="Auto (Advance by Space)" Foreground="#334155"/>
-            </Border>
-
-            <TextBlock Text="Stanzas" Style="{StaticResource FieldLabel}"/>
-            <Border Background="#FAFBFF" BorderBrush="#E8ECF6" BorderThickness="1" CornerRadius="10" Padding="12">
               <StackPanel>
-                <TextBlock Text="1. Amazing grace! how sweet the sound" Foreground="#334155" Margin="0,0,0,6"/>
-                <TextBlock Text="2. ’Twas grace that taught my heart to fear" Foreground="#334155" Margin="0,0,0,6"/>
-                <TextBlock Text="3. Through many dangers, toils and snares" Foreground="#334155" Margin="0,0,0,6"/>
-                <TextBlock Text="4. The Lord has promised good to me" Foreground="#334155"/>
+                <TextBlock Text="{Binding SelectedItemType}" FontWeight="SemiBold" Foreground="#24324A"/>
+                <TextBlock Text="{Binding SelectedPlanSummary}" FontSize="12" Foreground="#66708A" Margin="0,3,0,0"/>
               </StackPanel>
             </Border>
 
-            <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-              <Button Content="Add Stanza" Style="{StaticResource SubtleButton}"/>
-              <Button Content="Reorder" Style="{StaticResource SubtleButton}" Margin="8,0,0,0"/>
-            </StackPanel>
-          </StackPanel>
-        </Border>
+            <TextBlock Text="Title" Style="{StaticResource FieldLabel}"/>
+            <TextBox Text="{Binding SelectedItemTitle, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding HasSelectedItem}" Margin="0,0,0,12"/>
 
-        <Border Style="{StaticResource CardBorder}">
-          <Grid>
-            <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="*"/>
-              <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
-            <StackPanel>
-              <TextBlock Text="Repeat" Style="{StaticResource FieldLabel}"/>
-              <TextBlock Text="None" Foreground="#24324A"/>
-            </StackPanel>
-            <StackPanel Grid.Column="1">
-              <TextBlock Text="Background" Style="{StaticResource FieldLabel}"/>
-              <TextBlock Text="Default" Foreground="#24324A"/>
-            </StackPanel>
-          </Grid>
+            <TextBlock Text="Content" Style="{StaticResource FieldLabel}"/>
+            <TextBox Text="{Binding SelectedItemContent, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding HasSelectedItem}" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" MinHeight="180" Margin="0,0,0,12"/>
+
+            <TextBlock Text="Presentation mode" Style="{StaticResource FieldLabel}"/>
+            <ComboBox ItemsSource="{Binding PresentationModes}" SelectedItem="{Binding SelectedPresentationMode, Mode=TwoWay}" IsEnabled="{Binding HasSelectedItem}" Margin="0,0,0,12"/>
+
+            <TextBlock Text="Marquee speed" Style="{StaticResource FieldLabel}"/>
+            <Border Style="{StaticResource CardBorder}" Padding="10" Margin="0,0,0,12">
+              <StackPanel>
+                <TextBlock Text="Used when the presentation mode is Scrollable. It can still be adjusted during live presentation." Foreground="#66708A" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                <Slider Minimum="1" Maximum="100" Value="{Binding SelectedScrollSpeed, Mode=TwoWay}" IsEnabled="{Binding HasSelectedItem}"/>
+                <TextBlock Text="{Binding SelectedScrollSpeed, StringFormat=Default speed: {0}}" Foreground="#24324A" FontWeight="SemiBold" Margin="0,6,0,0"/>
+              </StackPanel>
+            </Border>
+
+            <Button Content="Save Component" Background="#5B5CEB" Foreground="White" BorderThickness="0" Padding="18,10" Command="{Binding SaveSelectedItemCommand}" IsEnabled="{Binding HasSelectedItem}"/>
+          </StackPanel>
         </Border>
       </StackPanel>
 
-      <Grid Grid.Row="2" Grid.ColumnSpan="3" Margin="0,16,0,0">
-        <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="220"/>
-          <ColumnDefinition Width="*"/>
-          <ColumnDefinition Width="Auto"/>
-          <ColumnDefinition Width="Auto"/>
-          <ColumnDefinition Width="Auto"/>
-        </Grid.ColumnDefinitions>
-
-        <Border Style="{StaticResource CardBorder}" Padding="12,8">
-          <Grid>
-            <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="*"/>
-              <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
-            <TextBlock Text="Total Duration" Foreground="#5B5CEB" FontWeight="SemiBold"/>
-            <TextBlock Grid.Column="1" Text="18:15" Foreground="#24324A" FontWeight="SemiBold"/>
-          </Grid>
-        </Border>
-
-        <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
-          <Button Content="Display Options" Style="{StaticResource SubtleButton}"/>
-        </StackPanel>
-        <StackPanel Grid.Column="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="8,0,0,0">
-          <Button Content="Transitions: Fade" Style="{StaticResource SubtleButton}"/>
-        </StackPanel>
-        <StackPanel Grid.Column="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="8,0,0,0">
-          <Button Content="Theme: Default" Style="{StaticResource SubtleButton}"/>
-        </StackPanel>
-      </Grid>
+      <Border Grid.Row="2" Grid.ColumnSpan="3" Background="#F8FAFC" BorderBrush="#E8ECF6" BorderThickness="1" CornerRadius="10" Padding="12" Margin="0,16,0,0">
+        <TextBlock Text="Static mode keeps content fixed on screen. Scrollable mode presents marquee content moving from bottom to top using the saved default speed." Foreground="#66708A" TextWrapping="Wrap"/>
+      </Border>
     </Grid>
-  </Grid>
+    </Grid>
+  </ScrollViewer>
 </UserControl>

@@ -19,15 +19,7 @@
         </Style>
     </UserControl.Resources>
 
-    <Grid Margin="18">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
-
-        <Border Grid.RowSpan="3" Style="{StaticResource CardBorder}" Background="White"/>
-
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" CanContentScroll="False">
         <Grid Margin="18">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
@@ -35,24 +27,33 @@
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <Grid Margin="0,0,0,18">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
+            <Border Grid.RowSpan="3" Style="{StaticResource CardBorder}" Background="White"/>
 
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <Border Width="50" Height="50" Background="#EEF2FF" CornerRadius="14">
-                        <TextBlock Text="🖼" FontSize="24" Foreground="#5B5CEB" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                    </Border>
-                    <StackPanel Margin="14,0,0,0" VerticalAlignment="Center">
-                        <TextBlock Text="Media Library" FontSize="30" FontWeight="SemiBold" Foreground="#1E293B"/>
-                        <TextBlock Text="Manage Images, Videos and Audio for Presentations" Foreground="#64748B" FontSize="13" Margin="0,4,0,0"/>
+            <Grid Margin="18">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <Grid Margin="0,0,0,18">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Border Width="50" Height="50" Background="#EEF2FF" CornerRadius="14">
+                            <TextBlock Text="🖼" FontSize="24" Foreground="#5B5CEB" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <StackPanel Margin="14,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="Media Library" FontSize="30" FontWeight="SemiBold" Foreground="#1E293B"/>
+                            <TextBlock Text="Manage Images, Videos and Audio for Presentations" Foreground="#64748B" FontSize="13" Margin="0,4,0,0"/>
+                        </StackPanel>
                     </StackPanel>
-                </StackPanel>
 
-                <local:SearchBar Grid.Column="1" VerticalAlignment="Center"/>
-            </Grid>
+                    <local:SearchBar Grid.Column="1" VerticalAlignment="Center"/>
+                </Grid>
 
             <Grid Grid.Row="1">
                 <Grid.ColumnDefinitions>
@@ -205,6 +206,7 @@
                     <Button Content="Delete" Style="{StaticResource SecondaryButton}" Foreground="#DC2626" BorderBrush="#FECACA"/>
                 </StackPanel>
             </Grid>
+            </Grid>
         </Grid>
-    </Grid>
+    </ScrollViewer>
 </UserControl>

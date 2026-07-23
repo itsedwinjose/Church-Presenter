@@ -11,6 +11,8 @@ public partial class OperatorConsoleWindow : Window
     private readonly AppDatabase _database;
     private readonly IReadOnlyList<PlannerComponent> _components;
     private PresentationWindow? _presentation;
+    private bool _isMarqueePlaying;
+
     public OperatorConsoleWindow(AppDatabase database, IReadOnlyList<PlannerComponent> components)
     {
         InitializeComponent();
@@ -19,80 +21,131 @@ public partial class OperatorConsoleWindow : Window
         ComponentList.ItemsSource = components;
         if (components.Count > 0) ComponentList.SelectedIndex = 0;
         ScreenStatus.Text = Forms.Screen.AllScreens.Length > 1 ? "Second display detected — HDMI output will use it." : "No second display detected — output will use this screen.";
-        // show configured scroll speed for the initially selected item (if any)
         if (ComponentList.SelectedItem is PlannerComponent pc) ScrollSpeedDisplay.Text = pc.ScrollSpeed.ToString();
         Closed += (_, _) => ClosePresentation();
+        UpdatePresentationToggle();
+        UpdatePlaybackControls();
     }
+
     private PlannerComponent? Selected => ComponentList.SelectedItem as PlannerComponent;
+
     private void Component_Selected(object sender, SelectionChangedEventArgs e)
     {
         if (Selected is null) return;
         PreviewTitle.Text = Selected.Title;
         PreviewContent.Text = Selected.Content;
         DisplayModeBox.SelectedIndex = Selected.PresentationMode == "Scrollable" ? 1 : 0;
-        // show saved per-item scroll speed
         ScrollSpeedDisplay.Text = Selected.ScrollSpeed.ToString();
         ApplyPreviewMode();
-        if (_presentation is not null) StartPresentation();
+        UpdatePlaybackControls();
+
+        if (_presentation is not null)
+            StartPresentation(IsScrollableModeSelected);
     }
+
     private void DisplayMode_Changed(object sender, SelectionChangedEventArgs e)
     {
-        if (Selected is null || DisplayModeBox.SelectedItem is not ComboBoxItem mode) return; _database.SetPlannerPresentationMode(Selected.Id, mode.Content?.ToString() ?? "Static"); ApplyPreviewMode();
+        if (Selected is null || DisplayModeBox.SelectedItem is not ComboBoxItem mode) return;
+
+        Selected.PresentationMode = mode.Content?.ToString() ?? "Static";
+        _database.SetPlannerPresentationMode(Selected.Id, Selected.PresentationMode);
+        ApplyPreviewMode();
+        UpdatePlaybackControls();
+
+        if (_presentation is not null)
+            StartPresentation(IsScrollableModeSelected);
     }
-    private void ApplyPreviewMode() { PreviewScroller.VerticalScrollBarVisibility = DisplayModeBox.SelectedIndex == 1 ? ScrollBarVisibility.Auto : ScrollBarVisibility.Disabled; }
+
+    private void ApplyPreviewMode() => PreviewScroller.VerticalScrollBarVisibility = IsScrollableModeSelected ? ScrollBarVisibility.Auto : ScrollBarVisibility.Disabled;
+
     private void Play_Click(object sender, RoutedEventArgs e)
     {
-        StartPresentation();
+        StartPresentation(true);
     }
 
-    private void StartPresentation()
+    private void StartPresentation(bool startMarquee)
     {
         if (Selected is null) { MessageBox.Show("Select a service item first.", "Church Presenter"); return; }
-        _presentation?.Close();
+
         var background = _database.Get("BackgroundColor", "#FFFFFF");
         var (foreground, size) = _database.GetPresentationStyle(Selected.Type);
-        var speed = Selected.ScrollSpeed;
-        _presentation = new PresentationWindow(Selected.Title, Selected.Content, background, foreground, size, Selected.PresentationMode == "Scrollable", speed);
-        MoveToPresentationScreen(_presentation);
-        _presentation.Show();
+        var speed = GetSelectedScrollSpeed();
+        var scrollable = IsScrollableModeSelected;
+
+        if (_presentation is null)
+        {
+            _presentation = new PresentationWindow(Selected.Title, Selected.Content, background, foreground, size, scrollable, speed);
+            _presentation.Closed += Presentation_Closed;
+            MoveToPresentationScreen(_presentation);
+            _presentation.Show();
+        }
+        else
+        {
+            _presentation.UpdatePresentation(Selected.Title, Selected.Content, background, foreground, size, scrollable, speed);
+            if (!_presentation.IsVisible)
+                _presentation.Show();
+            _presentation.Activate();
+        }
+
         Selected.IsCompleted = true;
         ComponentList.Items.Refresh();
+        ApplyMarqueeState(scrollable && startMarquee);
         UpdatePresentationToggle();
-        // start marquee only when Play is clicked from console
-        if (Selected.PresentationMode == "Scrollable") _presentation.StartScrolling();
+        UpdatePlaybackControls();
     }
 
-    private void CloseConsole_Click(object sender, RoutedEventArgs e)
+    private void ClosePresentation_Click(object sender, RoutedEventArgs e)
     {
-        Close();
+        ClosePresentation();
     }
 
     private void ClosePresentation()
     {
-        try { _presentation?.StopScrolling(); _presentation?.Close(); } catch { }
+        if (_presentation is null)
+        {
+            _isMarqueePlaying = false;
+            UpdatePresentationToggle();
+            UpdatePlaybackControls();
+            return;
+        }
+
+        var presentation = _presentation;
+        _presentation = null;
+        _isMarqueePlaying = false;
+
+        try
+        {
+            presentation.Closed -= Presentation_Closed;
+            presentation.StopScrolling();
+            presentation.Close();
+        }
+        catch { }
+
         _presentation = null;
         UpdatePresentationToggle();
+        UpdatePlaybackControls();
     }
 
     private void TogglePresentation_Click(object sender, RoutedEventArgs e)
     {
-        if (_presentation is null) StartPresentation();
+        if (_presentation is null) StartPresentation(IsScrollableModeSelected);
         else ClosePresentation();
     }
 
     private void UpdatePresentationToggle()
     {
         if (PresentationToggleButton is not null)
-            PresentationToggleButton.Content = _presentation is null ? "Open presenter" : "Close presenter";
+            PresentationToggleButton.Content = _presentation is null ? "Open presentation" : "Close presentation";
     }
 
     private void IncreaseSpeed_Click(object sender, RoutedEventArgs e)
     {
         if (Selected is null) { MessageBox.Show("Select a service item first.", "Church Presenter"); return; }
-        var current = int.Parse(ScrollSpeedDisplay.Text ?? _database.Get("ScrollSpeed", "2"));
+        var current = GetSelectedScrollSpeed();
         current++;
         if (current > 100) current = 100;
         _database.SetPlannerComponentScrollSpeed(Selected.Id, current);
+        Selected.ScrollSpeed = current;
         ScrollSpeedDisplay.Text = current.ToString();
         if (_presentation is not null) _presentation.SetScrollSpeed(current);
     }
@@ -100,13 +153,15 @@ public partial class OperatorConsoleWindow : Window
     private void DecreaseSpeed_Click(object sender, RoutedEventArgs e)
     {
         if (Selected is null) { MessageBox.Show("Select a service item first.", "Church Presenter"); return; }
-        var current = int.Parse(ScrollSpeedDisplay.Text ?? _database.Get("ScrollSpeed", "2"));
+        var current = GetSelectedScrollSpeed();
         current--;
         if (current < 1) current = 1;
         _database.SetPlannerComponentScrollSpeed(Selected.Id, current);
+        Selected.ScrollSpeed = current;
         ScrollSpeedDisplay.Text = current.ToString();
         if (_presentation is not null) _presentation.SetScrollSpeed(current);
     }
+
     private void Stop_Click(object sender, RoutedEventArgs e)
     {
         if (_presentation is null) return;
@@ -121,21 +176,27 @@ public partial class OperatorConsoleWindow : Window
     {
         if (sender is not ToggleButton toggle) return;
 
+        if (!IsScrollableModeSelected)
+        {
+            toggle.IsChecked = false;
+            toggle.Content = "Play";
+            return;
+        }
+
         if (toggle.IsChecked == true)
         {
-            // Start or resume
             try
             {
-                // If there's no presentation yet, create and show one
                 if (_presentation is null)
                 {
-                    Play_Click(this, e);
+                    StartPresentation(true);
                 }
                 else
                 {
-                    // resume scrolling
                     _presentation.StartScrolling();
+                    _isMarqueePlaying = true;
                 }
+
                 toggle.Content = "Pause";
             }
             catch (System.Exception ex)
@@ -147,8 +208,8 @@ public partial class OperatorConsoleWindow : Window
         }
         else
         {
-            // Pause
             toggle.Content = "Play";
+            _isMarqueePlaying = false;
             try { _presentation?.StopScrolling(); } catch { }
         }
     }
@@ -159,6 +220,55 @@ public partial class OperatorConsoleWindow : Window
         PreviewContent.Text = string.Empty;
         PreviewScroller.VerticalScrollBarVisibility = ScrollBarVisibility.Disabled;
     }
+
+    private int GetSelectedScrollSpeed()
+    {
+        if (int.TryParse(ScrollSpeedDisplay.Text, out var speed))
+            return Math.Clamp(speed, 1, 100);
+
+        return Selected?.ScrollSpeed is int selectedSpeed
+            ? Math.Clamp(selectedSpeed, 1, 100)
+            : 2;
+    }
+
+    private bool IsScrollableModeSelected => DisplayModeBox.SelectedIndex == 1;
+
+    private void ApplyMarqueeState(bool shouldScroll)
+    {
+        if (_presentation is null)
+        {
+            _isMarqueePlaying = false;
+            return;
+        }
+
+        _isMarqueePlaying = shouldScroll;
+        if (shouldScroll)
+            _presentation.StartScrolling();
+        else
+            _presentation.StopScrolling();
+    }
+
+    private void UpdatePlaybackControls()
+    {
+        if (PlayPauseToggle is null)
+            return;
+
+        PlayPauseToggle.IsEnabled = IsScrollableModeSelected;
+        PlayPauseToggle.IsChecked = IsScrollableModeSelected && _isMarqueePlaying;
+        PlayPauseToggle.Content = _isMarqueePlaying ? "Pause" : "Play";
+    }
+
+    private void Presentation_Closed(object? sender, EventArgs e)
+    {
+        if (!ReferenceEquals(sender, _presentation))
+            return;
+
+        _presentation = null;
+        _isMarqueePlaying = false;
+        UpdatePresentationToggle();
+        UpdatePlaybackControls();
+    }
+
     private static void MoveToPresentationScreen(Window window)
     {
         var screens = Forms.Screen.AllScreens;

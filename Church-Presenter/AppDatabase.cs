@@ -84,6 +84,96 @@ public sealed class AppDatabase
         return Convert.ToInt32(cmd.ExecuteScalar());
     }
 
+    public IReadOnlyList<PlannerSummary> GetPlanners()
+    {
+        using var c = Open();
+        using var cmd = c.CreateCommand();
+        cmd.CommandText = """
+            SELECT p.Id,
+                   p.ServiceDate,
+                   p.ServiceName,
+                   COALESCE(p.ThemeName, ''),
+                   COUNT(pc.Id)
+            FROM Planners p
+            LEFT JOIN PlannerComponents pc ON pc.PlannerId = p.Id
+            GROUP BY p.Id, p.ServiceDate, p.ServiceName, p.ThemeName
+            ORDER BY p.ServiceDate DESC, p.ServiceName COLLATE NOCASE
+            """;
+        using var r = cmd.ExecuteReader();
+        var result = new List<PlannerSummary>();
+        while (r.Read())
+            result.Add(new PlannerSummary
+            {
+                Id = r.GetInt32(0),
+                ServiceDate = DateTime.Parse(r.GetString(1)),
+                ServiceName = r.GetString(2),
+                ThemeName = r.GetString(3),
+                ItemCount = r.GetInt32(4)
+            });
+        return result;
+    }
+
+    public PlannerSummary? GetPlanner(int plannerId)
+    {
+        using var c = Open();
+        using var cmd = c.CreateCommand();
+        cmd.CommandText = """
+            SELECT p.Id,
+                   p.ServiceDate,
+                   p.ServiceName,
+                   COALESCE(p.ThemeName, ''),
+                   COUNT(pc.Id)
+            FROM Planners p
+            LEFT JOIN PlannerComponents pc ON pc.PlannerId = p.Id
+            WHERE p.Id = $id
+            GROUP BY p.Id, p.ServiceDate, p.ServiceName, p.ThemeName
+            """;
+        cmd.Parameters.AddWithValue("$id", plannerId);
+        using var r = cmd.ExecuteReader();
+        if (!r.Read()) return null;
+
+        return new PlannerSummary
+        {
+            Id = r.GetInt32(0),
+            ServiceDate = DateTime.Parse(r.GetString(1)),
+            ServiceName = r.GetString(2),
+            ThemeName = r.GetString(3),
+            ItemCount = r.GetInt32(4)
+        };
+    }
+
+    public int CreatePlanner(DateTime date, string serviceName, string? themeName)
+    {
+        using var c = Open();
+        using var cmd = c.CreateCommand();
+        cmd.CommandText = "INSERT INTO Planners(ServiceDate,ServiceName,ThemeName) VALUES($date,$name,$theme); SELECT last_insert_rowid();";
+        cmd.Parameters.AddWithValue("$date", date.ToString("yyyy-MM-dd"));
+        cmd.Parameters.AddWithValue("$name", serviceName.Trim());
+        cmd.Parameters.AddWithValue("$theme", string.IsNullOrWhiteSpace(themeName) ? DBNull.Value : themeName.Trim());
+        return Convert.ToInt32((long)cmd.ExecuteScalar()!);
+    }
+
+    public void UpdatePlanner(int plannerId, DateTime date, string serviceName, string? themeName)
+    {
+        using var c = Open();
+        using var cmd = c.CreateCommand();
+        cmd.CommandText = "UPDATE Planners SET ServiceDate=$date, ServiceName=$name, ThemeName=$theme WHERE Id=$id";
+        cmd.Parameters.AddWithValue("$id", plannerId);
+        cmd.Parameters.AddWithValue("$date", date.ToString("yyyy-MM-dd"));
+        cmd.Parameters.AddWithValue("$name", serviceName.Trim());
+        cmd.Parameters.AddWithValue("$theme", string.IsNullOrWhiteSpace(themeName) ? DBNull.Value : themeName.Trim());
+        cmd.ExecuteNonQuery();
+    }
+
+    public void DeletePlanner(int plannerId)
+    {
+        using var c = Open();
+        using var cmd = c.CreateCommand();
+        cmd.CommandText = "DELETE FROM Planners WHERE Id=$id";
+        cmd.Parameters.AddWithValue("$id", plannerId);
+        cmd.ExecuteNonQuery();
+    }
+
     public IReadOnlyList<Song> GetSongs()
     {
         using var c = Open();
@@ -102,6 +192,36 @@ public sealed class AppDatabase
         cmd.CommandText = "INSERT INTO Songs(Title,Lyrics) VALUES($title,$lyrics) ON CONFLICT(Title) DO UPDATE SET Lyrics=excluded.Lyrics";
         cmd.Parameters.AddWithValue("$title", title);
         cmd.Parameters.AddWithValue("$lyrics", lyrics);
+        cmd.ExecuteNonQuery();
+    }
+
+    public void AddSong(string title, string lyrics)
+    {
+        using var c = Open();
+        using var cmd = c.CreateCommand();
+        cmd.CommandText = "INSERT INTO Songs(Title,Lyrics) VALUES($title,$lyrics)";
+        cmd.Parameters.AddWithValue("$title", title);
+        cmd.Parameters.AddWithValue("$lyrics", lyrics);
+        cmd.ExecuteNonQuery();
+    }
+
+    public void UpdateSong(int id, string title, string lyrics)
+    {
+        using var c = Open();
+        using var cmd = c.CreateCommand();
+        cmd.CommandText = "UPDATE Songs SET Title=$title, Lyrics=$lyrics WHERE Id=$id";
+        cmd.Parameters.AddWithValue("$id", id);
+        cmd.Parameters.AddWithValue("$title", title);
+        cmd.Parameters.AddWithValue("$lyrics", lyrics);
+        cmd.ExecuteNonQuery();
+    }
+
+    public void DeleteSong(int id)
+    {
+        using var c = Open();
+        using var cmd = c.CreateCommand();
+        cmd.CommandText = "DELETE FROM Songs WHERE Id=$id";
+        cmd.Parameters.AddWithValue("$id", id);
         cmd.ExecuteNonQuery();
     }
 
@@ -189,6 +309,19 @@ public sealed class AppDatabase
         cmd.CommandText = "UPDATE PlannerComponents SET PresentationMode=$mode WHERE Id=$id";
         cmd.Parameters.AddWithValue("$id", id);
         cmd.Parameters.AddWithValue("$mode", mode);
+        cmd.ExecuteNonQuery();
+    }
+
+    public void UpdatePlannerComponentSettings(int id, string title, string content, string mode, int scrollSpeed)
+    {
+        using var c = Open();
+        using var cmd = c.CreateCommand();
+        cmd.CommandText = "UPDATE PlannerComponents SET Title=$title, Content=$content, PresentationMode=$mode, ScrollSpeed=$speed WHERE Id=$id";
+        cmd.Parameters.AddWithValue("$id", id);
+        cmd.Parameters.AddWithValue("$title", title);
+        cmd.Parameters.AddWithValue("$content", content);
+        cmd.Parameters.AddWithValue("$mode", mode);
+        cmd.Parameters.AddWithValue("$speed", scrollSpeed);
         cmd.ExecuteNonQuery();
     }
 

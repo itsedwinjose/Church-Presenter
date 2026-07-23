@@ -1,5 +1,7 @@
+using Microsoft.Data.Sqlite;
 using Microsoft.Win32;
 using System.Windows;
+using System.Windows.Controls;
 using System.Linq;
 
 namespace Church_Presenter;
@@ -7,23 +9,20 @@ namespace Church_Presenter;
 public partial class MainWindow : Window
 {
     private readonly AppDatabase _database = new();
+    private readonly Dictionary<int, HashSet<int>> _pendingBibleChapters = [];
+    private IReadOnlyList<Song> _songs = Array.Empty<Song>();
     private BibleVerse? _selectedVerse;
-    private PlannerComponent? _selectedComponent;
     private Song? _selectedSong;
     private MediaAsset? _selectedMedia;
-    private System.Windows.Controls.ComboBox? _planningModeBox;
-    private int _plannerId;
+    private bool _updatingSongEditor;
     public MainWindow()
     {
         InitializeComponent();
         _database.Initialize();
-        AddPlanningModeControl();
-        var dp = GetControl<System.Windows.Controls.DatePicker>("ServiceDatePicker");
-        if (dp != null) dp.SelectedDate = DateTime.Today;
         LoadSettings();
         LoadBooks();
         LoadLibraries();
-        LoadPlanner();
+        Show(SongPanel, SongLibraryNavButton);
         Closing += MainWindow_Closing;
     }
     private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
@@ -33,25 +32,196 @@ public partial class MainWindow : Window
             try { window.Close(); } catch { }
         }
     }
-    private void AddPlanningModeControl()
+    private void Show(UIElement panel, Button activeButton)
     {
-        var compTypeLabel = GetControl<System.Windows.Controls.TextBlock>("ComponentTypeLabel");
-        var panel = compTypeLabel?.Parent as System.Windows.Controls.StackPanel; if (panel is null) return;
-        var label = new System.Windows.Controls.TextBlock { Text = "Presentation mode", Margin = new Thickness(0, 12, 0, 0) };
-        _planningModeBox = new System.Windows.Controls.ComboBox { Margin = new Thickness(4), Width = 150 };
-        _planningModeBox.Items.Add("Static"); _planningModeBox.Items.Add("Scrollable"); _planningModeBox.SelectionChanged += (_, _) => { if (_selectedComponent is not null && _planningModeBox.SelectedItem is string mode) _database.SetPlannerPresentationMode(_selectedComponent.Id, mode); };
-        panel.Children.Insert(1, label); panel.Children.Insert(2, _planningModeBox);
+        foreach (var item in new UIElement[] { DashboardPanel, BiblePanel, PlannerPanel, SettingsPanel, SongPanel, MediaPanel, OtherPanel })
+            item.Visibility = Visibility.Collapsed;
+
+        panel.Visibility = Visibility.Visible;
+        SetActiveMenu(activeButton);
     }
-    private void Show(UIElement panel) { foreach (var item in new UIElement[] { DashboardPanel, BiblePanel, PlannerPanel, SettingsPanel, SongPanel, MediaPanel, OtherPanel }) item.Visibility = Visibility.Collapsed; panel.Visibility = Visibility.Visible; }
-    private void Dashboard_Click(object sender, RoutedEventArgs e) => Show(DashboardPanel); private void Planner_Click(object sender, RoutedEventArgs e) { Show(PlannerPanel); LoadPlanner(); } private void Bible_Click(object sender, RoutedEventArgs e) => Show(BiblePanel); private void Settings_Click(object sender, RoutedEventArgs e) => Show(SettingsPanel);
-    private void SongLibrary_Click(object sender, RoutedEventArgs e) { LoadLibraries(); Show(SongPanel); }
-    private void MediaLibrary_Click(object sender, RoutedEventArgs e) { LoadLibraries(); Show(MediaPanel); }
-    private void Theme_Click(object sender, RoutedEventArgs e) { OtherTitle.Text = "Theme Manager"; OtherSubtitle.Text = "Theme editing will be added next."; Show(OtherPanel); }
-    private void LoadBooks() { BookBox.ItemsSource = _database.GetBooks(); if (BookBox.Items.Count > 0) BookBox.SelectedIndex = 0; }
-    private void Book_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e) { if (BookBox.SelectedItem is BibleBook book) { ChapterBox.ItemsSource = _database.GetChapters(book.Id); if (ChapterBox.Items.Count > 0) ChapterBox.SelectedIndex = 0; } }
-    private void Chapter_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e) { if (BookBox.SelectedItem is BibleBook book && ChapterBox.SelectedItem is int chapter) VerseList.ItemsSource = _database.GetVerses(book.Id, chapter); }
+
+    private void SetActiveMenu(Button activeButton)
+    {
+        foreach (var button in new[] { DashboardNavButton, PlannerNavButton, SongLibraryNavButton, BibleNavButton, MediaLibraryNavButton, ThemesNavButton, SettingsNavButton })
+        {
+            var isActive = ReferenceEquals(button, activeButton);
+            button.Background = isActive ? new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#463493")) : System.Windows.Media.Brushes.Transparent;
+            button.Foreground = isActive ? System.Windows.Media.Brushes.White : new System.Windows.Media.SolidColorBrush((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#CBD5E1"));
+        }
+    }
+
+    private void Dashboard_Click(object sender, RoutedEventArgs e) => Show(DashboardPanel, DashboardNavButton);
+    private void Planner_Click(object sender, RoutedEventArgs e) => Show(PlannerPanel, PlannerNavButton);
+    private void Bible_Click(object sender, RoutedEventArgs e) => Show(BiblePanel, BibleNavButton);
+    private void Settings_Click(object sender, RoutedEventArgs e) => Show(SettingsPanel, SettingsNavButton);
+    private void SongLibrary_Click(object sender, RoutedEventArgs e) { LoadLibraries(); Show(SongPanel, SongLibraryNavButton); }
+    private void MediaLibrary_Click(object sender, RoutedEventArgs e) { LoadLibraries(); Show(MediaPanel, MediaLibraryNavButton); }
+    private void Theme_Click(object sender, RoutedEventArgs e) { OtherTitle.Text = "Theme Manager"; OtherSubtitle.Text = "Theme editing will be added next."; Show(OtherPanel, ThemesNavButton); }
+    private void LoadBooks(int? selectedBookId = null)
+    {
+        var books = _database.GetBooks();
+        BookBox.ItemsSource = books;
+
+        if (books.Count == 0)
+        {
+            ChapterBox.ItemsSource = null;
+            VerseList.ItemsSource = null;
+            return;
+        }
+
+        if (selectedBookId is int bookId)
+        {
+            var selectedBook = books.FirstOrDefault(book => book.Id == bookId);
+            if (selectedBook is not null)
+            {
+                BookBox.SelectedItem = selectedBook;
+                return;
+            }
+        }
+
+        BookBox.SelectedIndex = 0;
+    }
+
+    private IReadOnlyList<int> GetVisibleChapters(int bookId)
+    {
+        var chapters = _database.GetChapters(bookId).ToHashSet();
+        if (_pendingBibleChapters.TryGetValue(bookId, out var pending))
+            chapters.UnionWith(pending);
+        return chapters.OrderBy(chapter => chapter).ToList();
+    }
+
+    private void AddPendingChapter(int bookId, int chapter)
+    {
+        if (!_pendingBibleChapters.TryGetValue(bookId, out var pending))
+        {
+            pending = [];
+            _pendingBibleChapters[bookId] = pending;
+        }
+
+        pending.Add(chapter);
+    }
+
+    private void RemovePendingChapter(int bookId, int chapter)
+    {
+        if (!_pendingBibleChapters.TryGetValue(bookId, out var pending))
+            return;
+
+        pending.Remove(chapter);
+        if (pending.Count == 0)
+            _pendingBibleChapters.Remove(bookId);
+    }
+
+    private void RefreshChapters(BibleBook book, int? selectedChapter = null)
+    {
+        var chapters = GetVisibleChapters(book.Id);
+        ChapterBox.ItemsSource = chapters;
+
+        if (chapters.Count == 0)
+        {
+            VerseList.ItemsSource = null;
+            return;
+        }
+
+        if (selectedChapter is int chapter && chapters.Contains(chapter))
+        {
+            ChapterBox.SelectedItem = chapter;
+            return;
+        }
+
+        ChapterBox.SelectedIndex = 0;
+    }
+
+    private void Book_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e) { if (BookBox.SelectedItem is BibleBook book) RefreshChapters(book); }
+    private void Chapter_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e) { if (BookBox.SelectedItem is BibleBook book && ChapterBox.SelectedItem is int chapter) VerseList.ItemsSource = _database.GetVerses(book.Id, chapter); else VerseList.ItemsSource = null; }
     private void Search_Changed(object sender, System.Windows.Controls.TextChangedEventArgs e) { if (SearchBox.Text.Length >= 2) VerseList.ItemsSource = _database.Search(SearchBox.Text); else if (BookBox.SelectedItem is BibleBook book && ChapterBox.SelectedItem is int chapter) VerseList.ItemsSource = _database.GetVerses(book.Id, chapter); }
     private void Verse_Selected(object sender, System.Windows.Controls.SelectionChangedEventArgs e) => _selectedVerse = VerseList.SelectedItem as BibleVerse;
+    private void AddBibleBook_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new BookEditorWindow("Add Bible book", "Add book") { Owner = this };
+        if (dialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        try
+        {
+            _database.AddBibleBook(dialog.Testament, dialog.BookName);
+            var addedBook = _database.GetBooks().FirstOrDefault(book => string.Equals(book.Name, dialog.BookName, StringComparison.CurrentCultureIgnoreCase));
+            LoadBooks(addedBook?.Id);
+            MessageBox.Show($"'{dialog.BookName}' saved to the Bible library.", "Church Presenter");
+        }
+        catch (InvalidOperationException ex)
+        {
+            MessageBox.Show(ex.Message, "Church Presenter");
+        }
+    }
+
+    private void AddBibleChapter_Click(object sender, RoutedEventArgs e)
+    {
+        var books = _database.GetBooks();
+        if (books.Count == 0)
+        {
+            MessageBox.Show("Add a Bible book first.", "Church Presenter");
+            return;
+        }
+
+        var selectedBook = BookBox.SelectedItem as BibleBook;
+        var selectedBookId = selectedBook?.Id ?? books[0].Id;
+        var nextChapter = GetVisibleChapters(selectedBookId).DefaultIfEmpty(0).Max() + 1;
+        var dialog = new ChapterEditorWindow("Add Bible chapter", "Save chapter", books, selectedBookId, nextChapter) { Owner = this };
+        if (dialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        try
+        {
+            if (dialog.SelectedBook is null)
+                return;
+
+            if (GetVisibleChapters(dialog.SelectedBook.Id).Contains(dialog.ChapterNumber))
+            {
+                MessageBox.Show($"Chapter {dialog.ChapterNumber} already exists for {dialog.SelectedBook.Name}.", "Church Presenter");
+                return;
+            }
+
+            AddPendingChapter(dialog.SelectedBook.Id, dialog.ChapterNumber);
+            LoadBooks(dialog.SelectedBook.Id);
+            RefreshChapters(dialog.SelectedBook, dialog.ChapterNumber);
+            MessageBox.Show($"Chapter {dialog.ChapterNumber} added for {dialog.SelectedBook.Name}. Add verses later to save its content.", "Church Presenter");
+        }
+        catch (InvalidOperationException ex)
+        {
+            MessageBox.Show(ex.Message, "Church Presenter");
+        }
+    }
+
+    private void AddBibleVerse_Click(object sender, RoutedEventArgs e)
+    {
+        if (BookBox.SelectedItem is not BibleBook book)
+        {
+            MessageBox.Show("Select a Bible book first.", "Church Presenter");
+            return;
+        }
+
+        var selectedChapter = ChapterBox.SelectedItem as int?;
+        var dialog = new BibleVerseEntryWindow(_database, book, selectedChapter) { Owner = this };
+        if (dialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        if (selectedChapter is int chapterNumber)
+            RemovePendingChapter(book.Id, chapterNumber);
+
+        LoadBooks(book.Id);
+        if (selectedChapter is int chapter)
+            RefreshChapters(book, chapter);
+
+        MessageBox.Show("Bible verse saved.", "Church Presenter");
+    }
+
     private void ImportBible_Click(object sender, RoutedEventArgs e)
     {
         var choice = MessageBox.Show("Choose Yes to import a Bible CSV file. Choose No to add one Bible verse manually, including its Old or New Testament selection.", "Add Bible data", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
@@ -63,6 +233,7 @@ public partial class MainWindow : Window
     {
         if (MessageBox.Show("Delete every imported Bible book and verse? This cannot be undone.", "Delete Bible data", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
         _database.DeleteAllBibleData();
+        _pendingBibleChapters.Clear();
         _selectedVerse = null;
         BookBox.ItemsSource = null;
         ChapterBox.ItemsSource = null;
@@ -108,126 +279,141 @@ public partial class MainWindow : Window
         MessageBox.Show("Display settings saved.", "Church Presenter");
     }
     private void PresentVerse_Click(object sender, RoutedEventArgs e) { if (_selectedVerse is null) { MessageBox.Show("Choose a verse first.", "Church Presenter"); return; } Present(_selectedVerse.Reference, _selectedVerse.Text, "Bible Reading"); }
-    private void PlannerIdentity_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e) => LoadPlanner();
-    private void LoadPlanner_Click(object sender, RoutedEventArgs e) => LoadPlanner();
-    private void LoadPlanner()
+    private void LoadLibraries(int? songIdToSelect = null, string? songTitleToSelect = null)
     {
-        var dp = GetControl<System.Windows.Controls.DatePicker>("ServiceDatePicker");
-        var sn = GetControl<System.Windows.Controls.TextBox>("ServiceNameBox");
-        var plannerList = GetControl<System.Windows.Controls.ListBox>("PlannerList");
-        if (dp is null || sn is null || plannerList is null) return;
-        var name = string.IsNullOrWhiteSpace(sn.Text) ? "Sunday Service" : sn.Text.Trim();
-        _plannerId = _database.GetOrCreatePlanner(dp.SelectedDate ?? DateTime.Today, name);
-        plannerList.ItemsSource = _database.GetPlannerComponents(_plannerId);
-        ClearComponentEditor();
-    }
-    private void AddComponent_Click(object sender, RoutedEventArgs e)
-    {
-        if (_plannerId == 0) LoadPlanner();
-        var type = (sender as System.Windows.Controls.Button)?.Tag?.ToString() ?? "Paragraph";
-        if (type == "Song")
-        {
-            var picker = new SongPickerWindow(_database) { Owner = this };
-            if (picker.ShowDialog() != true || picker.SelectedSong is null) return;
-            _database.AddPlannerComponent(_plannerId, "Song", picker.SelectedSong.Title, picker.SelectedSong.Lyrics);
-            RefreshPlanner();
-            return;
-        }
-        if (type == "Bible Reading")
-        {
-            var picker = new BibleReadingPickerWindow(_database) { Owner = this };
-            if (picker.ShowDialog() != true || picker.ReadingTitle is null || picker.ReadingText is null) return;
-            _database.AddPlannerComponent(_plannerId, "Bible Reading", picker.ReadingTitle, picker.ReadingText);
-            RefreshPlanner();
-            return;
-        }
-        var (title, content) = type switch
-        {
-            "Heading" => ("New heading", ""), "Paragraph" => ("Paragraph", "Enter text here."),
-            "Song" => ("New song", "Paste lyrics here."), "Bible Reading" => ("Bible reading", "Enter a Bible reference, e.g. John 3:16."),
-            "Image" => ("Image", "Choose or enter an image file path."), "Image + Text" => ("Image and text", "Image path and caption."),
-            "Video" => ("Video", "Choose or enter a video file path."), "Music" => ("Music", "Choose or enter a music file path."),
-            "Announcement" => ("Announcement", "Enter announcement text."), "Blank Screen" => ("Blank screen", ""),
-            "Countdown" => ("Countdown", "05:00"), _ => (type, "")
-        };
-        if ((type == "Image" || type == "Video" || type == "Music") && _selectedMedia is not null && _selectedMedia.Type == type) (title, content) = (_selectedMedia.Title, _selectedMedia.FilePath);
-        _database.AddPlannerComponent(_plannerId, type, title, content); RefreshPlanner(true);
-    }
-    private void PlannerComponent_Selected(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
-    {
-        var plannerList = GetControl<System.Windows.Controls.ListBox>("PlannerList");
-        _selectedComponent = plannerList?.SelectedItem as PlannerComponent; if (_selectedComponent is null) { ClearComponentEditor(); return; }
-        var compTypeLabel = GetControl<System.Windows.Controls.TextBlock>("ComponentTypeLabel");
-        var compTitle = GetControl<System.Windows.Controls.TextBox>("ComponentTitleBox");
-        var compContent = GetControl<System.Windows.Controls.TextBox>("ComponentContentBox");
-        if (compTypeLabel != null) compTypeLabel.Text = _selectedComponent.Type == "Song" ? "Song — edits apply only to this planner" : _selectedComponent.Type;
-        if (compTitle != null) compTitle.Text = _selectedComponent.Title;
-        if (compContent != null) compContent.Text = _selectedComponent.Content;
-        if (_planningModeBox is not null) _planningModeBox.SelectedItem = _selectedComponent.PresentationMode;
-    }
-    private void SaveComponent_Click(object sender, RoutedEventArgs e)
-    {
-        if (_selectedComponent is null) return;
-        var compTitleBox = GetControl<System.Windows.Controls.TextBox>("ComponentTitleBox");
-        var compContentBox = GetControl<System.Windows.Controls.TextBox>("ComponentContentBox");
-        if (_selectedComponent is not null && compTitleBox is not null && compContentBox is not null)
-        {
-            _database.UpdatePlannerComponent(_selectedComponent.Id, compTitleBox.Text.Trim(), compContentBox.Text);
-            RefreshPlanner(true);
-        }
-    }
-    private void MoveUp_Click(object sender, RoutedEventArgs e) => MoveSelected(-1);
-    private void MoveDown_Click(object sender, RoutedEventArgs e) => MoveSelected(1);
-    private void MoveSelected(int direction) { if (_selectedComponent is null) return; _database.MovePlannerComponent(_plannerId, _selectedComponent.Id, direction); RefreshPlanner(true); }
-    private void RemoveComponent_Click(object sender, RoutedEventArgs e) { if (_selectedComponent is null) return; if (MessageBox.Show($"Remove '{_selectedComponent.Title}'?", "Church Presenter", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes) { _database.DeletePlannerComponent(_selectedComponent.Id); RefreshPlanner(); } }
-    private void RefreshPlanner(bool reselect = false)
-    {
-        var selectedId = reselect ? _selectedComponent?.Id : null;
-        var components = _database.GetPlannerComponents(_plannerId);
-        var plannerList = GetControl<System.Windows.Controls.ListBox>("PlannerList");
-        if (plannerList is null) return;
-        plannerList.ItemsSource = components;
-        if (selectedId is int id) plannerList.SelectedItem = components.FirstOrDefault(x => x.Id == id); else ClearComponentEditor();
-    }
-    private void ClearComponentEditor()
-    {
-        _selectedComponent = null;
-        var compType = GetControl<System.Windows.Controls.TextBlock>("ComponentTypeLabel");
-        if (compType is null) return;
-        compType.Text = "Select a component";
-        var compTitle = GetControl<System.Windows.Controls.TextBox>("ComponentTitleBox");
-        var compContent = GetControl<System.Windows.Controls.TextBox>("ComponentContentBox");
-        if (compTitle != null) compTitle.Text = "";
-        if (compContent != null) compContent.Text = "";
-        if (_planningModeBox is not null) _planningModeBox.SelectedIndex = -1;
+        _songs = _database.GetSongs();
+        ApplySongFilter(songIdToSelect ?? _selectedSong?.Id, songTitleToSelect);
     }
 
-    private T? GetControl<T>(string name) where T : class => FindName(name) as T;
-    private void PresentComponent_Click(object sender, RoutedEventArgs e)
+    private void SongSearch_Changed(object sender, System.Windows.Controls.TextChangedEventArgs e) => ApplySongFilter(_selectedSong?.Id, _selectedSong?.Title);
+
+    private void ApplySongFilter(int? songIdToSelect = null, string? songTitleToSelect = null)
     {
-        if (_plannerId == 0) LoadPlanner();
-        var components = _database.GetPlannerComponents(_plannerId);
-        if (components.Count == 0) { MessageBox.Show("Add a planner component before starting presentation.", "Church Presenter"); return; }
-        new OperatorConsoleWindow(_database, components) { Owner = this }.Show();
+        var query = SongSearchBox?.Text?.Trim() ?? string.Empty;
+        var filteredSongs = string.IsNullOrWhiteSpace(query)
+            ? _songs.ToList()
+            : _songs.Where(song => song.Title.Contains(query, StringComparison.CurrentCultureIgnoreCase) || song.Lyrics.Contains(query, StringComparison.CurrentCultureIgnoreCase)).ToList();
+
+        SongList.ItemsSource = filteredSongs;
+        SongCountText.Text = $"Songs    {_songs.Count}";
+        SongSearchStatusText.Text = string.IsNullOrWhiteSpace(query)
+            ? $"{filteredSongs.Count} songs available"
+            : $"{filteredSongs.Count} of {_songs.Count} songs match \"{query}\"";
+
+        var songToSelect = songIdToSelect is int id
+            ? filteredSongs.FirstOrDefault(song => song.Id == id)
+            : null;
+
+        if (songToSelect is null && !string.IsNullOrWhiteSpace(songTitleToSelect))
+            songToSelect = filteredSongs.FirstOrDefault(song => string.Equals(song.Title, songTitleToSelect, StringComparison.CurrentCultureIgnoreCase));
+
+        if (songToSelect is not null)
+        {
+            SongList.SelectedItem = songToSelect;
+            return;
+        }
+
+        if (_selectedSong is not null && filteredSongs.All(song => song.Id != _selectedSong.Id))
+            SongList.SelectedItem = null;
+
+        if (_selectedSong is null)
+            UpdateSongEditorState();
     }
-    private void LoadLibraries() { SongList.ItemsSource = _database.GetSongs(); }
+
+    private void NewSong_Click(object sender, RoutedEventArgs e)
+    {
+        SongList.SelectedItem = null;
+        SetSelectedSong(null);
+        SongTitleBox.Focus();
+    }
+
+    private void SongEditor_Changed(object sender, System.Windows.Controls.TextChangedEventArgs e)
+    {
+        if (_updatingSongEditor) return;
+        UpdateSongEditorState();
+    }
+
     private void SaveSong_Click(object sender, RoutedEventArgs e)
     {
         if (string.IsNullOrWhiteSpace(SongTitleBox.Text) || string.IsNullOrWhiteSpace(SongLyricsBox.Text)) { MessageBox.Show("Enter both a song title and lyrics.", "Church Presenter"); return; }
-        _database.SaveSong(SongTitleBox.Text.Trim(), SongLyricsBox.Text); LoadLibraries(); SongTitleBox.Clear(); SongLyricsBox.Clear();
+
+        var title = SongTitleBox.Text.Trim();
+        var lyrics = SongLyricsBox.Text.TrimEnd();
+
+        try
+        {
+            if (_selectedSong is null)
+            {
+                _database.AddSong(title, lyrics);
+                LoadLibraries(songTitleToSelect: title);
+            }
+            else
+            {
+                _database.UpdateSong(_selectedSong.Id, title, lyrics);
+                LoadLibraries(songIdToSelect: _selectedSong.Id);
+            }
+        }
+        catch (SqliteException ex) when (ex.SqliteErrorCode == 19)
+        {
+            MessageBox.Show("A song with this title already exists. Choose a different title or edit the existing song.", "Church Presenter");
+        }
     }
+    private void DeleteSong_Click(object sender, RoutedEventArgs e)
+    {
+        if (_selectedSong is null)
+        {
+            MessageBox.Show("Select a song to delete.", "Church Presenter");
+            return;
+        }
+
+        if (MessageBox.Show($"Delete '{_selectedSong.Title}' from the song library? Existing planner items will be kept.", "Delete song", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+
+        _database.DeleteSong(_selectedSong.Id);
+        SongList.SelectedItem = null;
+        SetSelectedSong(null);
+        LoadLibraries();
+    }
+
     private void DeleteAllSongs_Click(object sender, RoutedEventArgs e)
     {
         if (MessageBox.Show("Delete every song in the song library? Existing planner items will be kept. This cannot be undone.", "Delete songs", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
         _database.DeleteAllSongs();
-        _selectedSong = null;
-        SongTitleBox.Clear();
-        SongLyricsBox.Clear();
+        SongSearchBox.Clear();
+        SongList.SelectedItem = null;
+        SetSelectedSong(null);
         LoadLibraries();
     }
     private void Song_Selected(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
-        _selectedSong = SongList.SelectedItem as Song; if (_selectedSong is null) return; SongTitleBox.Text = _selectedSong.Title; SongLyricsBox.Text = _selectedSong.Lyrics;
+        SetSelectedSong(SongList.SelectedItem as Song);
+    }
+
+    private void SetSelectedSong(Song? song)
+    {
+        _selectedSong = song;
+        _updatingSongEditor = true;
+        SongIdBox.Text = song?.Id.ToString("000") ?? "New";
+        SongTitleBox.Text = song?.Title ?? string.Empty;
+        SongLyricsBox.Text = song?.Lyrics ?? string.Empty;
+        _updatingSongEditor = false;
+        UpdateSongEditorState();
+    }
+
+    private void UpdateSongEditorState()
+    {
+        var title = SongTitleBox?.Text?.Trim() ?? string.Empty;
+        var lyrics = SongLyricsBox?.Text ?? string.Empty;
+
+        SongStatusText.Text = _selectedSong is null
+            ? "No song selected"
+            : $"{_selectedSong.Title} (ID {_selectedSong.Id:000})";
+        SongEditorModeText.Text = _selectedSong is null ? "Adding a new song" : "Editing selected song";
+        SongPreviewTitleText.Text = string.IsNullOrWhiteSpace(title) ? "Song preview" : title;
+        SongPreviewLyricsText.Text = string.IsNullOrWhiteSpace(lyrics)
+            ? "Select a song or start a new one to see its lyrics here."
+            : lyrics;
+        SaveSongButton.Content = _selectedSong is null ? "▣  Save Song" : "▣  Update Song";
+        DeleteSongButton.IsEnabled = _selectedSong is not null;
     }
     private void SaveMedia_Click(object sender, RoutedEventArgs e)
     {
